@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.artius_speclens_ai;
   if (!apiKey) {
     res.status(500).json({ error: { message: "Server thiếu biến môi trường ANTHROPIC_API_KEY." } });
     return;
