@@ -1,13 +1,16 @@
 /*
-  Inventory Extractor — ARTUS reskin.
+  Inventory Extractor — ARTIUS reskin (v2).
   FUNCTIONALITY is identical to uploads/inventory-extractor.jsx (v4):
   same parsing, material-code table, marker editing, thumbnails,
   Claude image analysis, Excel/TSV/annotated-image/JSON-bundle export.
-  Only the visual layer (CSS + markup shell + icons) was changed to the
-  ARTUS navy / steel-blue design. Mounted by "Inventory Extractor — ARTUS.dc.html".
+  Visual layer: ARTIUS navy / steel-blue design, ARTIUS logo mark, and the
+  material table is now grouped by "Nhóm" with a color-coded left rail and
+  inline thumbnails instead of a flat spreadsheet-style table.
+  Place "artius-logo-white.png" alongside this file.
 */
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import * as XLSX from "xlsx";
+import logoUrl from "./artius-logo-white.png";
 
 /* ---------- inline lucide-style icons (replace lucide-react) ---------- */
 const S = { width: 15, height: 15, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" };
@@ -596,6 +599,32 @@ const cssExtra = `
 .pane-body::-webkit-scrollbar-thumb:hover, .sched-scroll::-webkit-scrollbar-thumb:hover, .lb-card::-webkit-scrollbar-thumb:hover { background-color:var(--ac); }
 .pane-body::-webkit-scrollbar-thumb:active, .sched-scroll::-webkit-scrollbar-thumb:active, .lb-card::-webkit-scrollbar-thumb:active { background-color:var(--ac2); }
 .pane-body::-webkit-scrollbar-corner, .sched-scroll::-webkit-scrollbar-corner, .lb-card::-webkit-scrollbar-corner { background:var(--input); }
+
+/* Logo ARTIUS trong banner */
+.tb-logo { height:44px; width:auto; display:block; }
+
+/* ===== Bảng vật liệu GỘP THEO NHÓM (thay cho <table class="sched">) ===== */
+.grp-wrap { border:1px solid var(--line); border-radius:14px; background:var(--panel2); overflow:hidden; }
+.grp-head { padding:7px 12px; background:#0e1526; font-size:9.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; border-bottom:1px solid var(--line2); display:flex; align-items:center; gap:7px; position:sticky; top:0; z-index:2; }
+.grp-dot { width:8px; height:8px; border-radius:2px; display:inline-block; flex:0 0 auto; }
+.grp-row { display:flex; align-items:center; gap:9px; padding:7px 12px; border-bottom:1px solid var(--line); border-left:3px solid transparent; cursor:pointer; transition:background .12s; }
+.grp-row.active-row { background:rgba(123,163,207,0.12); }
+.grp-row.hl-row { background:rgba(157,192,230,0.16) !important; }
+.grp-row.row-low { background:rgba(224,164,74,0.06); }
+.grp-thumb { width:36px; height:36px; object-fit:cover; border-radius:6px; border:1px solid var(--line2); cursor:zoom-in; flex:0 0 auto; }
+.grp-thumb-ph { width:36px; height:36px; border-radius:6px; border:1px dashed var(--line2); background:var(--input); display:inline-block; flex:0 0 auto; }
+.grp-input { background:transparent; border:none; font-family:var(--sans); color:var(--tx2); outline:none; }
+.grp-input::placeholder { color:var(--faint); }
+.grp-code { width:64px; flex:0 0 auto; font-weight:700; color:var(--ac3); font-size:11.5px; padding:5px 4px; }
+.grp-main { flex:1; min-width:120px; display:flex; flex-direction:column; }
+.grp-mon { font-size:12px; padding:2px 0; }
+.grp-vl { font-size:10.5px; color:var(--mut2); padding:1px 0; }
+.grp-vitri { width:110px; flex:0 0 auto; font-size:11px; color:var(--tx3); padding:5px 4px; }
+.grp-sl { width:24px; flex:0 0 auto; text-align:center; font-size:11px; font-weight:700; color:var(--tx2); }
+.grp-sl.qty-zero { color:var(--amber2); }
+.grp-select { width:78px; flex:0 0 auto; background:transparent; border:none; font-family:var(--sans); color:var(--tx3); font-size:11px; padding:5px 2px; cursor:pointer; }
+.grp-select option { background:#101725; color:var(--tx2); }
+.grp-note { width:110px; flex:0 0 auto; font-size:10.5px; color:var(--faint); padding:5px 4px; }
 `;
 
 // Lấy tiền tố nhóm mã của 1 dòng: ưu tiên phần chữ trong "ma" (vd "F-03" -> "F"),
@@ -615,6 +644,17 @@ function stripImageInstances(rows, imgId) {
     out.push({ ...r, instances: kept });
   }
   return out;
+}
+
+// Màu dải trái theo Nhóm — dùng cho bảng gộp nhóm (grp-head / grp-row).
+const GROUP_COLOR = { "Nội thất": "#7ba3cf", "Đèn": "#e0a44a", "Vật liệu bề mặt": "#aab4c4", "Cửa & Vách kính": "#bcd6f0", "Hardware": "#6f7889", "Trang trí": "#7fd8ab" };
+
+// Gom danh sách dòng (đã lọc) thành các nhóm theo NHOM_OPTS (giữ thứ tự cố định),
+// nhóm lạ (không nằm trong NHOM_OPTS) được xếp cuối. Chỉ trả về nhóm có dòng.
+function groupRowsByNhom(rows) {
+  const extra = Array.from(new Set(rows.map((r) => r.nhom).filter((n) => n && !NHOM_OPTS.includes(n))));
+  const order = [...NHOM_OPTS, ...extra];
+  return order.map((k) => ({ key: k, rows: rows.filter((r) => r.nhom === k) })).filter((g) => g.rows.length > 0);
 }
 
 function InventoryExtractor() {
@@ -1282,7 +1322,7 @@ function InventoryExtractor() {
       <header className="topbar">
         <div className="topbar-main">
           <div className="tb-brand">
-            <span className="tb-word">ARTUS</span>
+            <img src={logoUrl} alt="ARTIUS" className="tb-logo" />
             <span className="tb-pill">SPEC MATERIAL AGENT</span>
           </div>
           <div className="tb-stats">
@@ -1453,67 +1493,48 @@ function InventoryExtractor() {
               </div>
             )}
 
-            <div className="sched-wrap">
-              <div className="sched-scroll">
-                <table className="sched">
-                  <thead>
-                    <tr>
-                      <th className="col-sel">
-                        <input type="checkbox" className="axchk" aria-label="Chọn tất cả dòng đang hiện"
-                          checked={visibleCount > 0 && rows.filter(passFilter).every((r) => selected.has(r.id))}
-                          ref={(el) => { if (el) { const vis = rows.filter(passFilter); const some = vis.some((r) => selected.has(r.id)); const all = vis.length > 0 && vis.every((r) => selected.has(r.id)); el.indeterminate = some && !all; } }}
-                          onChange={(e) => { const vis = rows.filter(passFilter); setSelected((s) => { const n = new Set(s); if (e.target.checked) vis.forEach((r) => n.add(r.id)); else vis.forEach((r) => n.delete(r.id)); return n; }); }} />
-                      </th>
-                      <th className="col-stt">STT</th>
-                      <th className="col-thumb">Ảnh</th>
-                      <th className="col-code">Mã</th>
-                      <th>Nhóm</th><th>Món</th><th>Vật liệu / Finish</th><th>Vị trí</th><th>SL</th><th>Độ tin cậy</th><th>Ghi chú</th>
-                      <th className="col-act" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {hasRows ? rows.map((r, idx) => ({ r, idx })).filter(({ r }) => passFilter(r)).map(({ r, idx }) => (
-                      <tr key={r.id} className={(r.do_tin_cay === "Thấp" ? "row-low " : "") + (r.instances.length === 0 ? "row-unpinned " : "") + (r.id === activeId ? "active-row " : "") + (r.id === hoverId ? "hl-row" : "")}
+            <div className="grp-wrap">
+              {hasRows ? (
+                groupRowsByNhom(rows.filter(passFilter)).map((g) => (
+                  <div key={g.key}>
+                    <div className="grp-head" style={{ color: GROUP_COLOR[g.key] || "var(--tx3)" }}>
+                      <span className="grp-dot" style={{ background: GROUP_COLOR[g.key] || "var(--tx3)" }} />
+                      {g.key} · {g.rows.length}
+                    </div>
+                    {g.rows.map((r) => (
+                      <div key={r.id}
+                        className={"grp-row" + (r.do_tin_cay === "Thấp" ? " row-low" : "") + (r.id === activeId ? " active-row" : "") + (r.id === hoverId ? " hl-row" : "")}
+                        style={{ borderLeftColor: GROUP_COLOR[g.key] || "var(--tx3)" }}
                         onClick={() => setActiveId(r.id)}
                         onMouseEnter={() => setHoverId(r.id)} onMouseLeave={() => setHoverId((h) => (h === r.id ? null : h))}>
-                        <td className="sel-cell"><input type="checkbox" className="axchk" aria-label="Chọn dòng" checked={selected.has(r.id)} onClick={(e) => e.stopPropagation()} onChange={() => toggleSelect(r.id)} /></td>
-                        <td className="stt-cell">{idx + 1}</td>
-                        <td className="thumb-cell">{r.thumb
-                          ? <img src={r.thumb} alt={r.mon} title="Bấm để phóng to soi crop" style={{ cursor: "zoom-in" }} onClick={(e) => { e.stopPropagation(); openLightbox(r); }} />
+                        <input type="checkbox" className="axchk" aria-label="Chọn dòng" checked={selected.has(r.id)} onClick={(e) => e.stopPropagation()} onChange={() => toggleSelect(r.id)} />
+                        {r.thumb
+                          ? <img className="grp-thumb" src={r.thumb} alt={r.mon} title="Bấm để phóng to soi crop" onClick={(e) => { e.stopPropagation(); openLightbox(r); }} />
                           : (r.instances.length === 0
                             ? <button className="pin-btn" title={srcNums(r).length ? ("Bóc từ ảnh " + srcNums(r).join(", ") + " — bấm để mở đúng ảnh đó và gắn ký hiệu") : "Chưa rõ ảnh nguồn — bấm để gắn lên ảnh đang xem"} onClick={(e) => { e.stopPropagation(); pinRow(r); }}><Plus width={12} height={12} /> gắn{srcNums(r).length ? " · " + srcNums(r).join(",") : ""}</button>
-                            : <span className="thumb-ph" />)}</td>
-                        <td><input className="cell-input cell-code" aria-label="Mã" placeholder="—" value={r.ma} onChange={(e) => updateRow(r.id, "ma", e.target.value)} onBlur={() => setRows((rs) => sortRows(rs))} /></td>
-                        <td>
-                          <select className="cell-select" aria-label="Nhóm" value={r.nhom} onChange={(e) => updateRow(r.id, "nhom", e.target.value)}>
-                            {(r.nhom && !NHOM_OPTS.includes(r.nhom) ? [r.nhom, ...NHOM_OPTS] : NHOM_OPTS).map((o) => <option key={o} value={o}>{o}</option>)}
-                          </select>
-                        </td>
-                        <td><input className="cell-input" aria-label="Món" value={r.mon} onChange={(e) => updateRow(r.id, "mon", e.target.value)} /></td>
-                        <td><input className="cell-input" aria-label="Vật liệu" value={r.vat_lieu} onChange={(e) => updateRow(r.id, "vat_lieu", e.target.value)} /></td>
-                        <td><input className="cell-input" aria-label="Vị trí" value={r.vi_tri} onChange={(e) => updateRow(r.id, "vi_tri", e.target.value)} /></td>
-                        <td className={"qty-cell" + (r.instances.length === 0 ? " qty-zero" : "")} title={r.instances.length === 0 ? "Chưa gắn ký hiệu — bấm nút “gắn” ở cột Ảnh để neo lên phối cảnh" : "Số lượng = tổng số ký hiệu trên tất cả ảnh"}>{r.instances.length}</td>
-                        <td>
-                          <select className="cell-select" aria-label="Độ tin cậy" value={r.do_tin_cay} onChange={(e) => updateRow(r.id, "do_tin_cay", e.target.value)}>
-                            {(r.do_tin_cay && !TINCAY_OPTS.includes(r.do_tin_cay) ? [r.do_tin_cay, ...TINCAY_OPTS] : TINCAY_OPTS).map((o) => <option key={o} value={o}>{o}</option>)}
-                          </select>
-                        </td>
-                        <td><input className="cell-input" aria-label="Ghi chú" value={r.ghi_chu} onChange={(e) => updateRow(r.id, "ghi_chu", e.target.value)} /></td>
-                        <td className="act"><button className="icon-danger" aria-label="Xóa dòng" onClick={(e) => { e.stopPropagation(); deleteRow(r.id); }}><Trash2 size={15} /></button></td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan={12}>
-                        <div className="empty"><div className="eyebrow">Chưa có dữ liệu</div><div className="msg">Tải một hoặc nhiều ảnh phối cảnh và bấm <b>Phân tích tất cả</b> để bắt đầu — hoặc <b>Thêm dòng</b> để nhập tay.</div></div>
-                      </td></tr>
-                    )}
-                    {hasRows && visibleCount === 0 && (
-                      <tr><td colSpan={12}>
-                        <div className="empty"><div className="msg">Không có dòng nào khớp bộ lọc. <b onClick={() => { setSearch(""); setOnlyLow(false); setOnlyUnpinned(false); setActiveSheet(ALL_SHEET); }} style={{ cursor: "pointer", color: "var(--ac2)" }}>Xoá bộ lọc</b></div></div>
-                      </td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                            : <span className="grp-thumb-ph" />)}
+                        <input className="grp-input grp-code" aria-label="Mã" placeholder="—" value={r.ma} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "ma", e.target.value)} onBlur={() => setRows((rs) => sortRows(rs))} />
+                        <div className="grp-main">
+                          <input className="grp-input grp-mon" aria-label="Món" placeholder="Tên món…" value={r.mon} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "mon", e.target.value)} />
+                          <input className="grp-input grp-vl" aria-label="Vật liệu" placeholder="Vật liệu / finish…" value={r.vat_lieu} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "vat_lieu", e.target.value)} />
+                        </div>
+                        <input className="grp-input grp-vitri" aria-label="Vị trí" placeholder="Vị trí…" value={r.vi_tri} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "vi_tri", e.target.value)} />
+                        <span className={"grp-sl" + (r.instances.length === 0 ? " qty-zero" : "")} title={r.instances.length === 0 ? "Chưa gắn ký hiệu" : "Số lượng = tổng số ký hiệu trên tất cả ảnh"}>{r.instances.length}</span>
+                        <select className="grp-select" aria-label="Độ tin cậy" value={r.do_tin_cay} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "do_tin_cay", e.target.value)}>
+                          {(r.do_tin_cay && !TINCAY_OPTS.includes(r.do_tin_cay) ? [r.do_tin_cay, ...TINCAY_OPTS] : TINCAY_OPTS).map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                        <input className="grp-input grp-note" aria-label="Ghi chú" placeholder="Ghi chú…" value={r.ghi_chu} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "ghi_chu", e.target.value)} />
+                        <button className="icon-danger" aria-label="Xóa dòng" onClick={(e) => { e.stopPropagation(); deleteRow(r.id); }}><Trash2 size={14} /></button>
+                      </div>
+                    ))}
+                  </div>
+                ))
+              ) : (
+                <div className="empty"><div className="eyebrow">Chưa có dữ liệu</div><div className="msg">Tải một hoặc nhiều ảnh phối cảnh và bấm <b>Phân tích tất cả</b> để bắt đầu — hoặc <b>Thêm dòng</b> để nhập tay.</div></div>
+              )}
+              {hasRows && visibleCount === 0 && (
+                <div className="empty"><div className="msg">Không có dòng nào khớp bộ lọc. <b onClick={() => { setSearch(""); setOnlyLow(false); setOnlyUnpinned(false); setActiveSheet(ALL_SHEET); }} style={{ cursor: "pointer", color: "var(--ac2)" }}>Xoá bộ lọc</b></div></div>
+              )}
             </div>
 
             <div className="toolbar">
