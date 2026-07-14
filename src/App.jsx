@@ -573,12 +573,12 @@ const cssExtra = `
 
 .ax-split { flex:1 1 auto; min-height:0; display:flex; align-items:stretch; }
 .pane { display:flex; flex-direction:column; min-width:0; min-height:0; }
-.pane-table { flex:0 0 var(--splitpct, 54%); order:1; min-width:0; }
+.pane-image { flex:0 0 var(--splitpct, 45%); order:1; min-width:0; }
 .split-divider { order:2; flex:0 0 7px; align-self:stretch; cursor:col-resize; position:relative; background:transparent; }
 .split-divider::before { content:""; position:absolute; left:2px; top:0; bottom:0; width:2px; background:var(--line); border-radius:2px; transition:background .15s, box-shadow .15s; }
 .split-divider::after { content:""; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:4px; height:34px; border-radius:3px; background:rgba(123,163,207,0.28); }
 .split-divider:hover::before, .split-divider.dragging::before { background:var(--ac); box-shadow:0 0 0 1px rgba(123,163,207,0.35); }
-.pane-image { flex:1 1 0; order:3; }
+.pane-table { flex:1 1 0; order:3; }
 .pane-body { flex:1 1 auto; min-height:0; overflow-y:auto; padding:18px 22px 44px; }
 
 @media (max-width: 1080px) {
@@ -683,7 +683,7 @@ function InventoryExtractor() {
   const [undoStack, setUndoStack] = useState([]);            // B5: hoàn tác thao tác xoá/gộp/tách
   const [lightbox, setLightbox] = useState(null);            // C3: { code, title, src, meta }
   const [infoOpen, setInfoOpen] = useState(true);            // banner Thông tin dự án: hiện/ẩn
-  const [splitPct, setSplitPct] = useState(54);              // % bề rộng cột Bảng (trái); kéo divider để đổi
+  const [splitPct, setSplitPct] = useState(45);               // % bề rộng cột Ảnh (trái); kéo divider để đổi
   const [splitDragging, setSplitDragging] = useState(false);
 
   const [projectName, setProjectName] = useState("");
@@ -1326,11 +1326,11 @@ function InventoryExtractor() {
             <span className="tb-pill">SPEC MATERIAL AGENT</span>
           </div>
           <div className="tb-stats">
-            <div className="tb-stat"><b style={{ color: hasImages ? "var(--ac2)" : undefined }}>{analyzedN}/{images.length}</b><span>ẢNH ĐÃ BÓC</span></div>
             <div className="tb-stat"><b style={{ color: hasRows ? "var(--ac2)" : undefined }}>{rows.length}</b><span>MÓN</span></div>
             <div className="tb-stat"><b>{totalSyms}</b><span>KÝ HIỆU</span></div>
             {lowN > 0 && <div className="tb-stat warn"><b>{lowN}</b><span>TIN CẬY THẤP</span></div>}
             {unpinnedN > 0 && <div className="tb-stat info"><b>{unpinnedN}</b><span>CHƯA GẮN KH</span></div>}
+            <div className="tb-stat"><b style={{ color: hasImages ? "var(--ac2)" : undefined }}>{analyzedN}/{images.length}</b><span>ẢNH ĐÃ BÓC</span></div>
           </div>
           <button className="btn btn-ghost tb-toggle" onClick={() => setInfoOpen((v) => !v)} title={infoOpen ? "Ẩn thông tin dự án" : "Hiện thông tin dự án"}>
             {infoOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />} Thông tin dự án
