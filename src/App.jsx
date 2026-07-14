@@ -326,6 +326,7 @@ function separate(pts, minDist, w, h, iters) {
 /* ================= ARTUS navy theme (visual layer only) ================= */
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Newsreader:wght@400;500&display=swap');
+html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 .ax { --bg:#070a11; --side1:#0d1220; --side2:#090c15; --panel:#101725; --panel2:#111827;
   --card1:#121a2a; --card2:#0d131f; --input:#0d1119; --line:rgba(255,255,255,0.07); --line2:rgba(255,255,255,0.12);
   --ac:#7ba3cf; --ac2:#9dc0e6; --ac3:#bcd6f0; --acink:#0c1524; --acsoft:rgba(123,163,207,0.14);
@@ -625,6 +626,15 @@ const cssExtra = `
 .grp-select { width:78px; flex:0 0 auto; background:transparent; border:none; font-family:var(--sans); color:var(--tx3); font-size:11px; padding:5px 2px; cursor:pointer; }
 .grp-select option { background:#101725; color:var(--tx2); }
 .grp-note { width:110px; flex:0 0 auto; font-size:10.5px; color:var(--faint); padding:5px 4px; }
+.grp-caption { display:flex; align-items:center; gap:9px; padding:6px 12px; background:#0e1526; border-bottom:1px solid var(--line2); font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--mut2); position:sticky; top:0; z-index:3; }
+.grp-cap-sel { width:14px; flex:0 0 auto; }
+.grp-cap-thumb { width:36px; flex:0 0 auto; }
+.grp-cap-code { width:64px; flex:0 0 auto; }
+.grp-cap-main { flex:1; min-width:120px; }
+.grp-cap-vitri { width:110px; flex:0 0 auto; }
+.grp-cap-sl { width:24px; flex:0 0 auto; text-align:center; }
+.grp-cap-select { width:78px; flex:0 0 auto; }
+.grp-cap-act { width:20px; flex:0 0 auto; }
 `;
 
 // Lấy tiền tố nhóm mã của 1 dòng: ưu tiên phần chữ trong "ma" (vd "F-03" -> "F"),
@@ -1494,6 +1504,18 @@ function InventoryExtractor() {
             )}
 
             <div className="grp-wrap">
+              {hasRows && (
+                <div className="grp-caption">
+                  <span className="grp-cap-sel" />
+                  <span className="grp-cap-thumb">Ảnh</span>
+                  <span className="grp-cap-code">Mã</span>
+                  <span className="grp-cap-main">Món / Vật liệu</span>
+                  <span className="grp-cap-vitri">Vị trí</span>
+                  <span className="grp-cap-sl">SL</span>
+                  <span className="grp-cap-select">Tin cậy</span>
+                  <span className="grp-cap-act" />
+                </div>
+              )}
               {hasRows ? (
                 groupRowsByNhom(rows.filter(passFilter)).map((g) => (
                   <div key={g.key}>
@@ -1523,7 +1545,6 @@ function InventoryExtractor() {
                         <select className="grp-select" aria-label="Độ tin cậy" value={r.do_tin_cay} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "do_tin_cay", e.target.value)}>
                           {(r.do_tin_cay && !TINCAY_OPTS.includes(r.do_tin_cay) ? [r.do_tin_cay, ...TINCAY_OPTS] : TINCAY_OPTS).map((o) => <option key={o} value={o}>{o}</option>)}
                         </select>
-                        <input className="grp-input grp-note" aria-label="Ghi chú" placeholder="Ghi chú…" value={r.ghi_chu} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "ghi_chu", e.target.value)} />
                         <button className="icon-danger" aria-label="Xóa dòng" onClick={(e) => { e.stopPropagation(); deleteRow(r.id); }}><Trash2 size={14} /></button>
                       </div>
                     ))}
