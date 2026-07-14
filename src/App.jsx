@@ -424,8 +424,8 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 .h-w { left:0; top:50%; transform:translate(-50%,-50%); cursor:ew-resize; }
 .h-e { right:0; top:50%; transform:translate(50%,-50%); cursor:ew-resize; }
 .img-placeholder .ico { width:52px; height:52px; border-radius:14px; background:rgba(123,163,207,0.12); display:flex; align-items:center; justify-content:center; color:var(--ac2); }
-.marker { position:absolute; transform:translate(-50%,-50%); min-width:24px; height:24px; padding:0 6px; border-radius:12px; background:var(--ac2); color:var(--acink);
-  font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid #0c1524; box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:pointer; line-height:1; touch-action:none; }
+.marker { position:absolute; transform:translate(-50%,-50%); min-width:24px; height:24px; padding:0 6px; border-radius:12px; background:rgba(255,255,255,0.10); color:#fff;
+  font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid rgba(255,255,255,0.35); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:pointer; line-height:1; touch-action:none; }
 .marker.dim { opacity:.42; } .marker.active { background:var(--amber); color:#2a1c05; transform:translate(-50%,-50%) scale(1.18); z-index:5; box-shadow:0 0 0 3px rgba(224,164,74,.35),0 2px 8px rgba(0,0,0,.5); }
 .imgwrap.edit .marker { cursor:grab; }
 .hint { font-size:11.5px; color:var(--mut); margin-top:11px; line-height:1.5; } .hint.edit-on { color:var(--amber2); }
@@ -616,6 +616,8 @@ const cssExtra = `
 .grp-thumb-ph { width:36px; height:36px; border-radius:6px; border:1px dashed var(--line2); background:var(--input); display:inline-block; flex:0 0 auto; }
 .grp-input { background:transparent; border:none; font-family:var(--sans); color:var(--tx2); outline:none; }
 .grp-input::placeholder { color:var(--faint); }
+.grp-stt { width:24px; flex:0 0 auto; text-align:center; font-size:11px; font-weight:700; color:var(--mut2); }
+.grp-cap-stt { width:24px; flex:0 0 auto; text-align:center; }
 .grp-code { width:64px; flex:0 0 auto; font-weight:700; color:var(--ac3); font-size:11.5px; padding:5px 4px; }
 .grp-main { flex:1; min-width:120px; display:flex; flex-direction:column; }
 .grp-mon { font-size:12px; padding:2px 0; }
@@ -1376,6 +1378,10 @@ function InventoryExtractor() {
                 <button className="btn btn-ghost" onClick={analyzeActive} disabled={loading || !activeImage}><MapPin size={15} /> Phân tích ảnh này</button>
                 <button className="btn btn-primary" onClick={analyzeAll} disabled={loading || !hasImages}>{loading && <Loader2 size={15} className="spin" />}{loading ? "Đang phân tích…" : "Phân tích tất cả (" + images.length + ")"}</button>
               </div>
+              <div className="ctl-row">
+                <button className="btn btn-ghost" onClick={downloadAnnotated} disabled={!hasRows || !activeImage}><ImageDown size={15} /> Ảnh đánh số (ảnh này)</button>
+                <button className="btn btn-ghost" onClick={downloadAllAnnotated} disabled={!hasRows || !hasImages}><ImageDown size={15} /> Tất cả ảnh đánh số</button>
+              </div>
 
               {hasImages && (
                 <div className="imgstrip">
@@ -1507,10 +1513,10 @@ function InventoryExtractor() {
               {hasRows && (
                 <div className="grp-caption">
                   <span className="grp-cap-sel" />
+                  <span className="grp-cap-stt">#</span>
                   <span className="grp-cap-thumb">Ảnh</span>
                   <span className="grp-cap-code">Mã</span>
                   <span className="grp-cap-main">Món / Vật liệu</span>
-                  <span className="grp-cap-vitri">Vị trí</span>
                   <span className="grp-cap-sl">SL</span>
                   <span className="grp-cap-select">Tin cậy</span>
                   <span className="grp-cap-act" />
@@ -1530,6 +1536,7 @@ function InventoryExtractor() {
                         onClick={() => setActiveId(r.id)}
                         onMouseEnter={() => setHoverId(r.id)} onMouseLeave={() => setHoverId((h) => (h === r.id ? null : h))}>
                         <input type="checkbox" className="axchk" aria-label="Chọn dòng" checked={selected.has(r.id)} onClick={(e) => e.stopPropagation()} onChange={() => toggleSelect(r.id)} />
+                        <span className="grp-stt">{rows.indexOf(r) + 1}</span>
                         {r.thumb
                           ? <img className="grp-thumb" src={r.thumb} alt={r.mon} title="Bấm để phóng to soi crop" onClick={(e) => { e.stopPropagation(); openLightbox(r); }} />
                           : (r.instances.length === 0
@@ -1540,7 +1547,6 @@ function InventoryExtractor() {
                           <input className="grp-input grp-mon" aria-label="Món" placeholder="Tên món…" value={r.mon} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "mon", e.target.value)} />
                           <input className="grp-input grp-vl" aria-label="Vật liệu" placeholder="Vật liệu / finish…" value={r.vat_lieu} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "vat_lieu", e.target.value)} />
                         </div>
-                        <input className="grp-input grp-vitri" aria-label="Vị trí" placeholder="Vị trí…" value={r.vi_tri} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "vi_tri", e.target.value)} />
                         <span className={"grp-sl" + (r.instances.length === 0 ? " qty-zero" : "")} title={r.instances.length === 0 ? "Chưa gắn ký hiệu" : "Số lượng = tổng số ký hiệu trên tất cả ảnh"}>{r.instances.length}</span>
                         <select className="grp-select" aria-label="Độ tin cậy" value={r.do_tin_cay} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "do_tin_cay", e.target.value)}>
                           {(r.do_tin_cay && !TINCAY_OPTS.includes(r.do_tin_cay) ? [r.do_tin_cay, ...TINCAY_OPTS] : TINCAY_OPTS).map((o) => <option key={o} value={o}>{o}</option>)}
@@ -1563,11 +1569,7 @@ function InventoryExtractor() {
               <button className="btn btn-ghost" onClick={recode} disabled={!hasRows}><Hash size={15} /> Gộp trùng & đánh mã lại</button>
               <button className="btn btn-ghost" onClick={undo} disabled={!undoStack.length} title={undoStack.length ? ("Hoàn tác: " + undoStack[undoStack.length - 1].label + " (Ctrl/Cmd+Z)") : "Không có gì để hoàn tác"}><Undo2 size={15} /> Hoàn tác{undoStack.length ? " (" + undoStack.length + ")" : ""}</button>
               <div className="spacer" />
-              <button className="btn btn-ghost" onClick={downloadAnnotated} disabled={!hasRows || !activeImage}><ImageDown size={15} /> Ảnh đánh số (ảnh này)</button>
-              <button className="btn btn-ghost" onClick={downloadAllAnnotated} disabled={!hasRows || !hasImages}><ImageDown size={15} /> Tất cả ảnh đánh số</button>
-              <button className="btn btn-ghost" onClick={copyTSV} disabled={!hasRows}><Copy size={15} /> Sao chép bảng</button>
               <button className="btn btn-ghost" onClick={exportExcel} disabled={!hasRows}><Download size={15} /> Xuất Excel (bảng)</button>
-              <button className="btn btn-primary" onClick={exportBundle} disabled={!hasRows}><Package size={15} /> Xuất gói ảnh (.json)</button>
             </div>
             {status && <div className="status"><span style={{ width: 6, height: 6, borderRadius: 6, background: "var(--ac2)", display: "inline-block" }} />{status}</div>}
           </div>
