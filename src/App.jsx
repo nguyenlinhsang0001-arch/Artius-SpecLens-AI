@@ -391,6 +391,16 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 .btn-ghost:hover { border-color:rgba(123,163,207,0.5); } .btn-ghost:disabled { color:#525b6b; cursor:not-allowed; border-color:rgba(255,255,255,0.06); }
 .btn-ghost.on { background:var(--amber-soft); border-color:rgba(224,164,74,0.4); color:var(--amber2); }
 
+/* dropdown "Tải Ảnh" */
+.dl-menu-wrap { position:relative; display:inline-flex; }
+.dl-menu { position:absolute; top:calc(100% + 6px); left:0; z-index:30; min-width:210px; padding:5px;
+  background:var(--panel2); border:1px solid var(--line2); border-radius:11px; box-shadow:0 10px 28px rgba(0,0,0,0.5); }
+.dl-menu-item { width:100%; display:flex; align-items:center; gap:9px; text-align:left; font-family:var(--sans); font-size:12.5px; font-weight:600;
+  color:var(--tx2); background:transparent; border:0; border-radius:8px; padding:9px 11px; cursor:pointer; line-height:1.2; transition:background .12s,color .12s; }
+.dl-menu-item:hover { background:rgba(123,163,207,0.14); color:#fff; }
+.dl-menu-item:disabled { color:#525b6b; cursor:not-allowed; }
+.dl-menu-item:disabled:hover { background:transparent; color:#525b6b; }
+
 /* image */
 .imgwrap { position:relative; border:1px solid var(--line2); border-radius:14px; overflow:hidden; background:#0c1119; user-select:none; touch-action:none; }
 .imgwrap.edit { cursor:crosshair; }
@@ -407,6 +417,7 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 /* viền vùng crop khi chọn ký hiệu — thân trong suốt sự kiện, chỉ handle nhận kéo */
 .cropbox { position:absolute; border:1px dashed rgba(157,192,230,0.45); background:rgba(123,163,207,0.05); border-radius:3px;
   pointer-events:none; z-index:3; }
+.cropbox.unlocked { border:1.5px dashed var(--ac3,#9dc0e6); background:rgba(123,163,207,0.10); box-shadow:0 0 0 1px rgba(157,192,230,0.25) inset; }
 .crop-h { position:absolute; width:6px; height:6px; background:rgba(157,192,230,0.85); border:1px solid rgba(12,21,36,0.85); border-radius:2px;
   pointer-events:auto; touch-action:none; z-index:4; box-shadow:0 1px 2px rgba(0,0,0,.4); }
 .crop-h::before { content:""; position:absolute; inset:-8px; } /* mở rộng vùng bắt kéo mà không phình phần nhìn thấy */
@@ -425,8 +436,9 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 .h-e { right:0; top:50%; transform:translate(50%,-50%); cursor:ew-resize; }
 .img-placeholder .ico { width:52px; height:52px; border-radius:14px; background:rgba(123,163,207,0.12); display:flex; align-items:center; justify-content:center; color:var(--ac2); }
 .marker { position:absolute; transform:translate(-50%,-50%); min-width:24px; height:24px; padding:0 6px; border-radius:12px; background:rgba(255,255,255,0.10); color:#fff;
-  font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid rgba(255,255,255,0.35); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:pointer; line-height:1; touch-action:none; }
-.marker.dim { opacity:.42; } .marker.active { background:var(--amber); color:#2a1c05; transform:translate(-50%,-50%) scale(1.18); z-index:5; box-shadow:0 0 0 3px rgba(224,164,74,.35),0 2px 8px rgba(0,0,0,.5); }
+  font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid rgba(255,255,255,0.35); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:pointer; line-height:1; touch-action:none; opacity:.75; }
+.marker.dim { opacity:.42; } .marker.active { background:var(--amber); color:#2a1c05; transform:translate(-50%,-50%) scale(1.18); z-index:5; opacity:1; box-shadow:0 0 0 3px rgba(224,164,74,.35),0 2px 8px rgba(0,0,0,.5); }
+.marker.cropping { opacity:1; box-shadow:0 0 0 2px var(--ac3,#9dc0e6), 0 0 0 4px rgba(157,192,230,0.35), 0 2px 8px rgba(0,0,0,.5); z-index:7; }
 .imgwrap.edit .marker { cursor:grab; }
 .hint { font-size:11.5px; color:var(--mut); margin-top:11px; line-height:1.5; } .hint.edit-on { color:var(--amber2); }
 
@@ -682,6 +694,8 @@ function InventoryExtractor() {
   const [status, setStatus] = useState(null);
   const [activeId, setActiveId] = useState(null);
   const [markerEdit, setMarkerEdit] = useState(false);
+  const [dlMenuOpen, setDlMenuOpen] = useState(false);   // dropdown nút "Tải Ảnh" (1 ảnh / tất cả)
+  const [cropRowId, setCropRowId] = useState(null);      // dòng đang MỞ KHOÁ kéo vùng crop qua double-click ký hiệu
   const [dispSize, setDispSize] = useState({ w: 0, h: 0 });
   const [sideCollapsed, setSideCollapsed] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -709,6 +723,7 @@ function InventoryExtractor() {
   const wrapRef = useRef(null);
   const imgElMap = useRef(new Map()); // id -> HTMLImageElement offscreen (đã decode) cho MỌI ảnh; dùng cắt thumbnail/crop
   const splitRef = useRef(null);      // container chia đôi, để tính tỉ lệ khi kéo divider
+  const dlMenuRef = useRef(null);     // wrapper dropdown "Tải Ảnh" — để đóng khi click ra ngoài
 
   const activeImage = images.find((im) => im.id === activeImgId) || null;
 
@@ -753,6 +768,16 @@ function InventoryExtractor() {
     window.addEventListener("resize", update);
     return () => { if (ro) ro.disconnect(); window.removeEventListener("resize", update); };
   }, [activeImgId]);
+
+  // Đóng dropdown "Tải Ảnh" khi click ra ngoài hoặc nhấn Esc
+  useEffect(() => {
+    if (!dlMenuOpen) return;
+    const onDown = (e) => { if (dlMenuRef.current && !dlMenuRef.current.contains(e.target)) setDlMenuOpen(false); };
+    const onKey = (e) => { if (e.key === "Escape") setDlMenuOpen(false); };
+    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("pointerdown", onDown); window.removeEventListener("keydown", onKey); };
+  }, [dlMenuOpen]);
 
   // Tính thumbnail cho các dòng còn thiếu, mỗi khi có ảnh offscreen vừa load xong
   useEffect(() => {
@@ -844,7 +869,7 @@ function InventoryExtractor() {
     if (fs && fs.length) addFiles(fs);
   }
 
-  function selectImage(id) { setActiveImgId(id); setMarkerEdit(false); }
+  function selectImage(id) { setActiveImgId(id); setMarkerEdit(false); setCropRowId(null); }
 
   // Gỡ 1 ảnh: xóa khỏi danh sách, gỡ box của nó khỏi bảng rồi gộp + đánh mã lại.
   // Không xoá element khỏi imgElMap (giữ để Hoàn tác nếu cần), chỉ ẩn khỏi UI.
@@ -1379,8 +1404,23 @@ function InventoryExtractor() {
                 <button className="btn btn-primary" onClick={analyzeAll} disabled={loading || !hasImages}>{loading && <Loader2 size={15} className="spin" />}{loading ? "Đang phân tích…" : "Phân tích tất cả (" + images.length + ")"}</button>
               </div>
               <div className="ctl-row">
-                <button className="btn btn-ghost" onClick={downloadAnnotated} disabled={!hasRows || !activeImage}><ImageDown size={15} /> Ảnh đánh số (ảnh này)</button>
-                <button className="btn btn-ghost" onClick={downloadAllAnnotated} disabled={!hasRows || !hasImages}><ImageDown size={15} /> Tất cả ảnh đánh số</button>
+                <div className="dl-menu-wrap" ref={dlMenuRef}>
+                  <button className={"btn btn-ghost" + (dlMenuOpen ? " on" : "")} onClick={() => setDlMenuOpen((v) => !v)} disabled={!hasRows || !hasImages} aria-haspopup="menu" aria-expanded={dlMenuOpen}>
+                    <ImageDown size={15} /> Tải Ảnh <ChevronDown size={13} />
+                  </button>
+                  {dlMenuOpen && (
+                    <div className="dl-menu" role="menu">
+                      <button className="dl-menu-item" role="menuitem" disabled={!hasRows || !activeImage}
+                        onClick={() => { setDlMenuOpen(false); downloadAnnotated(); }}>
+                        <ImageDown size={14} /> <span>Tải 1 ảnh (ảnh đang xem)</span>
+                      </button>
+                      <button className="dl-menu-item" role="menuitem" disabled={!hasRows || !hasImages}
+                        onClick={() => { setDlMenuOpen(false); downloadAllAnnotated(); }}>
+                        <ImageDown size={14} /> <span>Tải tất cả ảnh</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {hasImages && (
@@ -1406,25 +1446,30 @@ function InventoryExtractor() {
                   onDragOver={onDragOver} onDragEnter={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
                   <img ref={imgRef} className="base" src={activeImage.preview} alt="Ảnh phối cảnh" onLoad={() => { const el = wrapRef.current; if (el) setDispSize({ w: el.clientWidth, h: el.clientHeight }); }} />
                   {markerLayout.map((m) => {
-                    const cls = "marker" + (activeId != null ? (m.rowId === activeId ? " active" : " dim") : "") + (m.rowId === hoverId ? " hl" : "");
-                    const showDone = markerEdit && m.rowId === activeId;
+                    const cropUnlocked = m.rowId === cropRowId;
+                    const cls = "marker" + (activeId != null ? (m.rowId === activeId ? " active" : " dim") : "") + (m.rowId === hoverId ? " hl" : "") + (cropUnlocked ? " cropping" : "");
+                    const showDone = (markerEdit && m.rowId === activeId) || cropUnlocked;
                     return (<div key={m.rowId + "-" + m.instIdx} className={cls} style={{ left: m.leftPct + "%", top: m.topPct + "%" }}
-                      title={(m.rowIdx + 1) + ". " + ((rows[m.rowIdx] && rows[m.rowIdx].mon) || "—")}
+                      title={(m.rowIdx + 1) + ". " + ((rows[m.rowIdx] && rows[m.rowIdx].mon) || "—") + " — double-click để mở khoá kéo vùng crop"}
                       onPointerEnter={() => setHoverId(m.rowId)} onPointerLeave={() => setHoverId((h) => (h === m.rowId ? null : h))}
-                      onPointerDown={(e) => startMarker(e, m.rowId, m.instIdx)} onClick={(e) => e.stopPropagation()}>
+                      onPointerDown={(e) => startMarker(e, m.rowId, m.instIdx)} onClick={(e) => e.stopPropagation()}
+                      onDoubleClick={(e) => { e.stopPropagation(); setActiveId(m.rowId); if (!markerEdit) setCropRowId((prev) => (prev === m.rowId ? null : m.rowId)); }}>
                       {m.rowIdx + 1}
                       {showDone && (
-                        <button className="marker-done" title="Xong — thoát chỉnh crop" aria-label="Xong"
+                        <button className="marker-done" title={cropUnlocked ? "Khoá lại vùng crop" : "Xong — thoát chỉnh crop"} aria-label={cropUnlocked ? "Khoá lại" : "Xong"}
                           onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => { e.stopPropagation(); setMarkerEdit(false); }}><Check width={12} height={12} /></button>
+                          onClick={(e) => { e.stopPropagation(); if (cropUnlocked) setCropRowId(null); else setMarkerEdit(false); }}><Check width={12} height={12} /></button>
                       )}
                     </div>);
                   })}
-                  {markerEdit && activeId != null && (() => {
-                    const r = rows.find((x) => x.id === activeId);
+                  {(() => {
+                    const cropId = markerEdit ? activeId : cropRowId;   // markerEdit dùng dòng đang chọn; ngoài ra dùng dòng vừa double-click
+                    if (cropId == null) return null;
+                    const r = rows.find((x) => x.id === cropId);
                     if (!r) return null;
+                    const unlocked = !markerEdit; // mở khoá qua double-click (không ở chế độ Thêm ký hiệu)
                     return r.instances.map((b, i) => ({ b, i })).filter(({ b }) => b.imgId === activeImgId).map(({ b, i }) => (
-                      <div key={"crop-" + r.id + "-" + i} className="cropbox"
+                      <div key={"crop-" + r.id + "-" + i} className={"cropbox" + (unlocked ? " unlocked" : "")}
                         style={{ left: (b.x1 * 100) + "%", top: (b.y1 * 100) + "%", width: ((b.x2 - b.x1) * 100) + "%", height: ((b.y2 - b.y1) * 100) + "%" }}>
                         {["nw", "n", "ne", "e", "se", "s", "sw", "w"].map((d) => (
                           <span key={d} className={"crop-h h-" + d}
@@ -1450,6 +1495,14 @@ function InventoryExtractor() {
                     : "Chọn một dòng trong bảng, rồi bấm lên ảnh để đặt ký hiệu."}
                 </div>
               )}
+              {activeImage && !markerEdit && cropRowId != null && (() => {
+                const cr = rows.find((x) => x.id === cropRowId); const ci = cr ? rows.indexOf(cr) : -1;
+                return (
+                  <div className="hint edit-on">
+                    Đã mở khoá kéo vùng crop cho ký hiệu #{ci + 1} ({(cr && cr.mon) || "—"}) — kéo các chấm ở góc/cạnh để chỉnh vùng crop · double-click lại (hoặc bấm ✓) để khoá.
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
