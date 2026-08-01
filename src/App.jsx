@@ -86,7 +86,7 @@ THỨ TỰ TRẢ VỀ (QUAN TRỌNG): xuất TẤT CẢ dòng NỘI THẤT (F/J)
 
 CHỈ trả về các dòng phân tách bằng "|". KHÔNG lời dẫn, markdown, code block.
 Header (dòng đầu tiên):
-ma|nhom|mon|vat_lieu_finish|vi_tri|do_tin_cay|ghi_chu|boxes
+ma|nhom|mon|vat_lieu_finish|so_luong|vi_tri|do_tin_cay|ghi_chu|boxes
 
 Cột:
 - ma: tiền tố mã vật liệu, CHỌN đúng 1 tiền tố từ BẢNG MÃ bên dưới theo vật liệu/loại của dòng. Chỉ ghi tiền tố (vd PT, ST, LT, D, W, F, J), KHÔNG kèm số.
@@ -94,11 +94,12 @@ Cột:
   + Nội thất CỐ ĐỊNH, gắn liền công trình (tủ liền tường, tủ bếp, quầy/quầy bar, vách tủ, kệ âm tường…) → J.
   + Chỉ để TRỐNG khi thật sự không xác định được loại.
 - nhom: 1 trong [Nội thất, Đèn, Vật liệu bề mặt, Cửa & Vách kính, Hardware, Trang trí].
-- mon: tên ngắn gọn (tiếng Việt), KHÔNG kèm số lượng trong tên (đừng viết "2 ghế", "bộ 4 đèn", "3 chậu"…) — số lượng đã tính qua số box (cột SL). Cá thể giống hệt nhau gộp 1 dòng, tên nhất quán.
+- mon: tên ngắn gọn (tiếng Việt), KHÔNG kèm số lượng trong tên (đừng viết "2 ghế", "bộ 4 đèn", "3 chậu"…) — số lượng ghi ở cột so_luong. Cá thể giống hệt nhau gộp 1 dòng, tên nhất quán.
 - vat_lieu_finish, vi_tri: ngắn gọn.
+- so_luong: SỐ NGUYÊN ≥ 1 — ĐẾM số vật thể CÙNG LOẠI (giống nhau) nhìn thấy trong ảnh cho dòng này (vd 4 ghế ăn giống nhau → 4). Nếu chỉ có 1 thì ghi 1.
 - do_tin_cay: Cao / Trung bình / Thấp.
 - ghi_chu: cảnh báo ngắn hoặc để trống.
-- boxes: các box "x1,y1,x2,y2" (0..1; (x1,y1) trên-trái, (x2,y2) dưới-phải, ôm SÁT vật), cách nhau bằng ";". Số box = số lượng.
+- boxes: CHỈ ĐÚNG 1 box "x1,y1,x2,y2" (0..1; (x1,y1) trên-trái, (x2,y2) dưới-phải, ôm SÁT vật). QUAN TRỌNG: dù so_luong > 1, mỗi dòng CHỈ đặt 1 box duy nhất — đặt lên đúng cá thể NHÌN RÕ NHẤT (ít bị che, đủ sáng, ở tiền cảnh) trong tất cả cá thể cùng loại. KHÔNG đặt nhiều box cho các cá thể lặp lại.
 
 BẢNG MÃ VẬT LIỆU (tiền tố = loại):
 ${CODE_LIST_TEXT}
@@ -195,12 +196,16 @@ function parseItems(text) {
     const nhom = (parts[1] || "").trim();
     const mon = (parts[2] || "").trim();
     const vat_lieu = (parts[3] || "").trim();
-    const vi_tri = (parts[4] || "").trim();
-    const do_tin_cay = (parts[5] || "").trim() || "Trung bình";
-    const ghi_chu = (parts[6] || "").trim();
-    const boxStr = parts.slice(7).join("|").trim();
+    const soLuongRaw = (parts[4] || "").trim();
+    const vi_tri = (parts[5] || "").trim();
+    const do_tin_cay = (parts[6] || "").trim() || "Trung bình";
+    const ghi_chu = (parts[7] || "").trim();
+    const boxStr = parts.slice(8).join("|").trim();
     if (!mon && !nhom) continue;
-    items.push({ id: nextId(), prefix, ma: "", nhom, mon, vat_lieu, vi_tri, do_tin_cay, ghi_chu, instances: parseBoxes(boxStr), thumb: null });
+    const boxes = parseBoxes(boxStr).slice(0, 1); // CHỈ giữ 1 box = đối tượng nhìn rõ nhất (1 ký hiệu / dòng)
+    const slNum = parseInt(soLuongRaw, 10);
+    const soLuong = Number.isFinite(slNum) && slNum > 0 ? slNum : (boxes.length || 1);
+    items.push({ id: nextId(), prefix, ma: "", nhom, mon, vat_lieu, soLuong, vi_tri, do_tin_cay, ghi_chu, instances: boxes, thumb: null });
   }
   return items;
 }
@@ -237,7 +242,11 @@ function mergeRows(items, getPrefix) {
       map.set(key, base); out.push(base); srcMap.set(base, srcIdsOf(it));
     } else {
       const base = map.get(key);
-      base.instances = base.instances.concat(it.instances || []);
+      // Giữ 1 ký hiệu (đối tượng rõ nhất): nếu base chưa có box mà dòng mới có thì lấy 1 box của dòng mới.
+      if ((!base.instances || base.instances.length === 0) && it.instances && it.instances.length) base.instances = [it.instances[0]];
+      // so_luong khi gộp trùng: lấy MAX (tránh cộng dồn trùng khi cùng 1 cụm vật xuất hiện ở nhiều ảnh).
+      const slBase = parseInt(base.soLuong, 10), slIt = parseInt(it.soLuong, 10);
+      base.soLuong = Math.max(Number.isFinite(slBase) ? slBase : 0, Number.isFinite(slIt) ? slIt : 0) || base.soLuong || 1;
       const locs = new Set(splitLocs(base.vi_tri)); splitLocs(it.vi_tri).forEach((s) => locs.add(s));
       base.vi_tri = Array.from(locs).join(", ");
       const note = String(it.ghi_chu || "").trim();
@@ -419,7 +428,16 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 /* viền vùng crop khi chọn ký hiệu — thân trong suốt sự kiện, chỉ handle nhận kéo */
 .cropbox { position:absolute; border:1px dashed rgba(157,192,230,0.45); background:rgba(123,163,207,0.05); border-radius:3px;
   pointer-events:none; z-index:3; }
-.cropbox.unlocked { border:1.5px dashed var(--ac3,#9dc0e6); background:rgba(123,163,207,0.10); box-shadow:0 0 0 1px rgba(157,192,230,0.25) inset; }
+.cropbox.unlocked { border:1.5px dashed var(--ac3,#9dc0e6); background:rgba(123,163,207,0.10); box-shadow:0 0 0 1px rgba(157,192,230,0.25) inset;
+  pointer-events:auto; cursor:grab; touch-action:none; }
+.cropbox.unlocked:active { cursor:grabbing; }
+/* nút Xong (✓) & Xóa (✗) đặt NGOÀI vùng crop — góc trên-phải */
+.crop-tools { position:absolute; right:0; top:0; transform:translate(0,-118%); display:flex; gap:6px; pointer-events:auto; z-index:8; }
+.crop-tick, .crop-del { width:20px; height:20px; border-radius:50%; border:none; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; padding:0; box-shadow:0 2px 6px rgba(0,0,0,.5); touch-action:none; }
+.crop-tick { background:var(--green); color:#0c1a12; }
+.crop-del { background:#e08a8a; color:#2a0c0c; }
+.crop-tick:hover, .crop-del:hover { filter:brightness(1.08); }
 .crop-h { position:absolute; width:6px; height:6px; background:rgba(157,192,230,0.85); border:1px solid rgba(12,21,36,0.85); border-radius:2px;
   pointer-events:auto; touch-action:none; z-index:4; box-shadow:0 1px 2px rgba(0,0,0,.4); }
 .crop-h::before { content:""; position:absolute; inset:-8px; } /* mở rộng vùng bắt kéo mà không phình phần nhìn thấy */
@@ -654,7 +672,8 @@ const cssExtra = `
 .grp-mon { font-size:12px; padding:2px 0; }
 .grp-vl { font-size:10px; color:var(--mut2); padding:1px 0; }
 .grp-vitri { width:110px; flex:0 0 auto; font-size:11px; color:var(--tx3); padding:5px 4px; }
-.grp-sl { width:28px; flex:0 0 auto; text-align:center; font-size:11px; font-weight:700; color:var(--tx2); }
+.grp-sl { width:34px; flex:0 0 auto; text-align:center; font-size:11px; font-weight:700; color:var(--tx2); padding:4px 0; -moz-appearance:textfield; }
+.grp-sl::-webkit-outer-spin-button, .grp-sl::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
 .grp-sl.qty-zero { color:var(--amber2); }
 .grp-select { width:104px; flex:0 0 auto; background:transparent; border:none; font-family:var(--sans); color:var(--tx3); font-size:11px; padding:5px 0; cursor:pointer; }
 .grp-select option { background:#101725; color:var(--tx2); }
@@ -665,7 +684,7 @@ const cssExtra = `
 .grp-cap-code { width:60px; flex:0 0 auto; }
 .grp-cap-main { flex:1; min-width:120px; }
 .grp-cap-vitri { width:110px; flex:0 0 auto; }
-.grp-cap-sl { width:28px; flex:0 0 auto; text-align:center; }
+.grp-cap-sl { width:34px; flex:0 0 auto; text-align:center; }
 .grp-cap-select { width:104px; flex:0 0 auto; }
 .grp-cap-act { width:30px; flex:0 0 auto; }
 `;
@@ -673,6 +692,13 @@ const cssExtra = `
 // Lấy tiền tố nhóm mã của 1 dòng: ưu tiên phần chữ trong "ma" (vd "F-03" -> "F"),
 // nếu chưa có mã thì dùng "prefix" do AI trả về. Dùng chung cho merge + đánh mã.
 const gpOf = (r) => ((r.ma && String(r.ma).split("-")[0]) || r.prefix || "");
+
+// Số lượng để hiển thị / xuất file: ưu tiên so_luong do AI đếm (đã cho phép sửa tay);
+// nếu để trống thì lấy theo số ký hiệu (box) đã gắn.
+const qtyOf = (r) => {
+  if (r && r.soLuong != null && String(r.soLuong).trim() !== "") { const n = parseInt(r.soLuong, 10); return Number.isFinite(n) ? n : (r.instances ? r.instances.length : 0); }
+  return r && r.instances ? r.instances.length : 0;
+};
 
 // Gỡ mọi bounding box thuộc ảnh imgId ra khỏi các dòng.
 // Dùng khi phân tích LẠI 1 ảnh (tránh nhân đôi box) hoặc khi gỡ hẳn 1 ảnh.
@@ -1035,7 +1061,7 @@ function InventoryExtractor() {
 
   function updateRow(id, field, value) { setRows((rs) => rs.map((r) => (r.id === id ? { ...r, [field]: value } : r))); }
   function deleteRow(id) { pushUndo("xoá dòng"); setRows((rs) => rs.filter((r) => r.id !== id)); if (activeId === id) setActiveId(null); setSelected((s) => { const n = new Set(s); n.delete(id); return n; }); }
-  function addRow() { const r = { id: nextId(), prefix: "", ma: "", nhom: "Nội thất", mon: "", vat_lieu: "", vi_tri: "", do_tin_cay: "Trung bình", ghi_chu: "", instances: [], thumb: null }; setRows((rs) => sortRows([...rs, r])); setActiveId(r.id); }
+  function addRow() { const r = { id: nextId(), prefix: "", ma: "", nhom: "Nội thất", mon: "", vat_lieu: "", soLuong: 1, vi_tri: "", do_tin_cay: "Trung bình", ghi_chu: "", instances: [], thumb: null }; setRows((rs) => sortRows([...rs, r])); setActiveId(r.id); }
   function recode() {
     setRows((rs) => sortRows(codeItems(mergeRows(rs, gpOf), gpOf)));
     setActiveId(null); setSelected(new Set());
@@ -1091,22 +1117,26 @@ function InventoryExtractor() {
     const sset = srcIdsOf(chosen[0]);
     const locs = new Set(splitLocs(base.vi_tri));
     const notes = base.ghi_chu ? [String(base.ghi_chu).trim()] : [];
+    let maxSL = parseInt(base.soLuong, 10); if (!Number.isFinite(maxSL)) maxSL = base.instances.length || 0;
     for (let i = 1; i < chosen.length; i++) {
       const c = chosen[i];
-      base.instances = base.instances.concat(c.instances || []);
+      // Giữ 1 ký hiệu (đối tượng rõ nhất): nếu base chưa có box mà dòng gộp có thì lấy 1 box.
+      if ((!base.instances || base.instances.length === 0) && c.instances && c.instances.length) base.instances = [c.instances[0]];
+      const slc = parseInt(c.soLuong, 10); if (Number.isFinite(slc)) maxSL = Math.max(maxSL, slc);
       srcIdsOf(c).forEach((x) => sset.add(x));
       splitLocs(c.vi_tri).forEach((s) => locs.add(s));
       const nt = String(c.ghi_chu || "").trim();
       if (nt && notes.indexOf(nt) < 0) notes.push(nt);
       if ((rank[c.do_tin_cay] || 0) > (rank[base.do_tin_cay] || 0)) base.do_tin_cay = c.do_tin_cay;
     }
+    base.soLuong = maxSL || 1;
     base.srcImgs = Array.from(sset);
     base.vi_tri = Array.from(locs).join(", ");
     base.ghi_chu = notes.filter(Boolean).join("; ");
     const dropIds = new Set(chosen.slice(1).map((r) => r.id));
     setRows((rs) => sortRows(codeItems(rs.filter((r) => !dropIds.has(r.id)).map((r) => (r.id === base.id ? base : r)), gpOf)));
     setSelected(new Set()); setActiveId(base.id);
-    setStatus("Đã gộp " + chosen.length + " dòng thành 1 (SL=" + base.instances.length + ") và đánh mã lại.");
+    setStatus("Đã gộp " + chosen.length + " dòng thành 1 (SL=" + qtyOf(base) + ") và đánh mã lại.");
   }
 
   // Tách mỗi dòng đã tick (có >=2 ký hiệu) thành từng dòng SL=1, giữ nguyên chữ.
@@ -1119,7 +1149,7 @@ function InventoryExtractor() {
       const out = [];
       for (const r of rs) {
         if (selected.has(r.id) && r.instances.length > 1) {
-          r.instances.forEach((b) => out.push({ ...r, id: nextId(), instances: [b], thumb: elReady(b.imgId) ? makeThumb(getEl(b.imgId), b) : null }));
+          r.instances.forEach((b) => out.push({ ...r, id: nextId(), soLuong: 1, instances: [b], thumb: elReady(b.imgId) ? makeThumb(getEl(b.imgId), b) : null }));
         } else out.push(r);
       }
       return sortRows(out);
@@ -1235,7 +1265,7 @@ function InventoryExtractor() {
       const desc = [r.mon, r.vat_lieu].filter(Boolean).join(" — ");
       aoa.push([stt, r.ma || "", "Mô tả / Description:", desc, "", "", ""]);
       aoa.push(["", "", "Vị trí sử dụng / Area:", r.vi_tri || "", "", "", ""]);
-      aoa.push(["", "", "Số lượng (SL) / Qty:", String(r.instances.length), "", "", ""]);
+      aoa.push(["", "", "Số lượng (SL) / Qty:", String(qtyOf(r)), "", "", ""]);
       aoa.push(["", "", "Kích thước / Dimension:", "", "", "", ""]);
       aoa.push(["", "", "Nhãn hiệu / Brand:", "", "", "", ""]);
       aoa.push(["", "", "Ghi chú / Note:", r.ghi_chu || "", "", "", ""]);
@@ -1259,7 +1289,7 @@ function InventoryExtractor() {
         used.add(n.toLowerCase()); XLSX.utils.book_append_sheet(wb, ws, n);
       };
       const H = ["STT", "Mã", "Nhóm", "Món", "Vật liệu / Finish", "Vị trí", "SL", "Độ tin cậy", "Ghi chú"];
-      const sum = [H, ...rows.map((r, i) => [i + 1, r.ma, r.nhom, r.mon, r.vat_lieu, r.vi_tri, r.instances.length, r.do_tin_cay, r.ghi_chu])];
+      const sum = [H, ...rows.map((r, i) => [i + 1, r.ma, r.nhom, r.mon, r.vat_lieu, r.vi_tri, qtyOf(r), r.do_tin_cay, r.ghi_chu])];
       const wsSum = XLSX.utils.aoa_to_sheet(sum);
       wsSum["!cols"] = [{ wch: 6 }, { wch: 10 }, { wch: 15 }, { wch: 24 }, { wch: 26 }, { wch: 16 }, { wch: 6 }, { wch: 12 }, { wch: 26 }];
       addSheet("TỔNG HỢP", wsSum);
@@ -1280,7 +1310,7 @@ function InventoryExtractor() {
 
   async function copyTSV() {
     const H = ["STT", "Mã", "Nhóm", "Món", "Vật liệu / Finish", "Vị trí", "SL", "Độ tin cậy", "Ghi chú"];
-    const tsv = [H.join("\t"), ...rows.map((r, i) => [i + 1, r.ma, r.nhom, r.mon, r.vat_lieu, r.vi_tri, r.instances.length, r.do_tin_cay, r.ghi_chu].join("\t"))].join("\n");
+    const tsv = [H.join("\t"), ...rows.map((r, i) => [i + 1, r.ma, r.nhom, r.mon, r.vat_lieu, r.vi_tri, qtyOf(r), r.do_tin_cay, r.ghi_chu].join("\t"))].join("\n");
     try { await navigator.clipboard.writeText(tsv); setStatus("Đã sao chép bảng — dán (Ctrl/Cmd + V) vào Excel."); }
     catch {
       const ta = document.createElement("textarea"); ta.value = tsv; document.body.appendChild(ta); ta.select();
@@ -1347,7 +1377,7 @@ function InventoryExtractor() {
     const src = crop && crop.data ? crop.data : null;
     if (!src) { setStatus("Chưa có crop cho dòng này (thiếu ký hiệu hoặc ảnh chưa sẵn sàng)."); return; }
     const imgN = b0 ? (imgIndex(b0.imgId) + 1) : "?";
-    setLightbox({ code: r.ma || "—", title: [r.mon, r.vat_lieu].filter(Boolean).join(" — ") || "(chưa đặt tên)", src, meta: "SL " + r.instances.length + " · crop từ ảnh #" + imgN + (r.vi_tri ? " · " + r.vi_tri : "") });
+    setLightbox({ code: r.ma || "—", title: [r.mon, r.vat_lieu].filter(Boolean).join(" — ") || "(chưa đặt tên)", src, meta: "SL " + qtyOf(r) + " · crop từ ảnh #" + imgN + (r.vi_tri ? " · " + r.vi_tri : "") });
   }
 
   function exportBundle() {
@@ -1355,7 +1385,7 @@ function InventoryExtractor() {
     const items = rows.map((r, i) => {
       const b0 = r.instances[0];
       const img = b0 && elReady(b0.imgId) ? makeExportCrop(getEl(b0.imgId), b0) : null;
-      return { stt: i + 1, ma: r.ma, nhom: r.nhom, mon: r.mon, vat_lieu: r.vat_lieu, vi_tri: r.vi_tri, sl: r.instances.length, do_tin_cay: r.do_tin_cay, ghi_chu: r.ghi_chu, image: img };
+      return { stt: i + 1, ma: r.ma, nhom: r.nhom, mon: r.mon, vat_lieu: r.vat_lieu, vi_tri: r.vi_tri, sl: qtyOf(r), do_tin_cay: r.do_tin_cay, ghi_chu: r.ghi_chu, image: img };
     });
     const bundle = { meta: { project: projectName, client, location, author, date: dateStr, images: images.length, generatedAt: new Date().toISOString() }, items };
     try {
@@ -1482,15 +1512,14 @@ function InventoryExtractor() {
                   onDragOver={onDragOver} onDragEnter={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
                   <img ref={imgRef} className="base" src={activeImage.preview} alt="Ảnh phối cảnh" onLoad={() => { const el = wrapRef.current; if (el) setDispSize({ w: el.clientWidth, h: el.clientHeight }); }} />
                   {markerLayout.map((m) => {
-                    const cropFocusId = markerEdit ? activeId : cropRowId;   // đang chỉnh crop -> chỉ hiện marker của dòng này
-                    if (cropFocusId != null && m.rowId !== cropFocusId) return null; // tạm ẩn các ký hiệu khác; xong (thoát crop) sẽ hiện lại
-                    const cropUnlocked = m.rowId === cropRowId;
-                    // #4: khi đang chỉnh crop (double-click) -> KHÔNG tô vàng (active), dùng trắng mờ (cropping) để nhìn xuyên vùng crop.
+                    // Mở khoá kéo vùng crop (double-click): ẩn TẤT CẢ ký hiệu (kể cả ký hiệu bên trong vùng crop).
+                    if (!markerEdit && cropRowId != null) return null;
+                    // Chế độ Thêm ký hiệu: chỉ hiện ký hiệu của dòng đang chọn.
+                    if (markerEdit && activeId != null && m.rowId !== activeId) return null;
                     let stateCls = "";
-                    if (cropUnlocked) stateCls = " cropping";
-                    else if (activeId != null) stateCls = (m.rowId === activeId ? " active" : " dim");
+                    if (activeId != null) stateCls = (m.rowId === activeId ? " active" : " dim");
                     const cls = "marker" + stateCls + (m.rowId === hoverId ? " hl" : "");
-                    const showDone = (markerEdit && m.rowId === activeId) || cropUnlocked;
+                    const showDone = markerEdit && m.rowId === activeId;
                     return (<div key={m.rowId + "-" + m.instIdx} className={cls} style={{ left: m.leftPct + "%", top: m.topPct + "%" }}
                       title={(m.rowIdx + 1) + ". " + ((rows[m.rowIdx] && rows[m.rowIdx].mon) || "—")}
                       onPointerEnter={() => setHoverId(m.rowId)} onPointerLeave={() => setHoverId((h) => (h === m.rowId ? null : h))}
@@ -1503,9 +1532,9 @@ function InventoryExtractor() {
                           onClick={(e) => { e.stopPropagation(); deleteInstance(m.rowId, m.instIdx); }}><XIcon width={11} height={11} /></button>
                       )}
                       {showDone && (
-                        <button className="marker-done" title={cropUnlocked ? "Khoá lại vùng crop" : "Xong — thoát chỉnh crop"} aria-label={cropUnlocked ? "Khoá lại" : "Xong"}
+                        <button className="marker-done" title="Xong — thoát chỉnh crop" aria-label="Xong"
                           onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => { e.stopPropagation(); if (cropUnlocked) setCropRowId(null); else setMarkerEdit(false); }}><Check width={12} height={12} /></button>
+                          onClick={(e) => { e.stopPropagation(); setMarkerEdit(false); }}><Check width={12} height={12} /></button>
                       )}
                     </div>);
                   })}
@@ -1517,11 +1546,24 @@ function InventoryExtractor() {
                     const unlocked = !markerEdit; // mở khoá qua double-click (không ở chế độ Thêm ký hiệu)
                     return r.instances.map((b, i) => ({ b, i })).filter(({ b }) => b.imgId === activeImgId).map(({ b, i }) => (
                       <div key={"crop-" + r.id + "-" + i} className={"cropbox" + (unlocked ? " unlocked" : "")}
-                        style={{ left: (b.x1 * 100) + "%", top: (b.y1 * 100) + "%", width: ((b.x2 - b.x1) * 100) + "%", height: ((b.y2 - b.y1) * 100) + "%" }}>
+                        style={{ left: (b.x1 * 100) + "%", top: (b.y1 * 100) + "%", width: ((b.x2 - b.x1) * 100) + "%", height: ((b.y2 - b.y1) * 100) + "%" }}
+                        onPointerDown={unlocked ? (e) => startMarker(e, r.id, i) : undefined}
+                        onClick={unlocked ? (e) => e.stopPropagation() : undefined}
+                        title={unlocked ? "Kéo giữa vùng crop để di chuyển · kéo các chấm để chỉnh kích thước" : undefined}>
                         {["nw", "n", "ne", "e", "se", "s", "sw", "w"].map((d) => (
                           <span key={d} className={"crop-h h-" + d}
                             onPointerDown={(e) => startResize(e, r.id, i, d)} onClick={(e) => e.stopPropagation()} />
                         ))}
+                        {unlocked && (
+                          <div className="crop-tools">
+                            <button className="crop-del" title="Xóa bớt ký hiệu này" aria-label="Xóa ký hiệu này"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => { e.stopPropagation(); const remaining = (r.instances ? r.instances.length : 0) - 1; deleteInstance(r.id, i); if (remaining <= 0) setCropRowId(null); }}><XIcon width={12} height={12} /></button>
+                            <button className="crop-tick" title="Xong — khoá lại vùng crop" aria-label="Xong"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => { e.stopPropagation(); setCropRowId(null); }}><Check width={13} height={13} /></button>
+                          </div>
+                        )}
                       </div>
                     ));
                   })()}
@@ -1546,7 +1588,7 @@ function InventoryExtractor() {
                 const cr = rows.find((x) => x.id === cropRowId); const ci = cr ? rows.indexOf(cr) : -1;
                 return (
                   <div className="hint edit-on">
-                    Đã mở khoá kéo vùng crop cho ký hiệu #{ci + 1} ({(cr && cr.mon) || "—"}) — kéo các chấm ở góc/cạnh để chỉnh vùng crop · double-click lại (hoặc bấm ✓) để khoá.
+                    Đã mở khoá vùng crop cho ký hiệu #{ci + 1} ({(cr && cr.mon) || "—"}) — kéo GIỮA vùng crop để di chuyển · kéo các chấm ở góc/cạnh để chỉnh kích thước · bấm ✓ (góc trên-phải) hoặc bấm ra vùng trống để khoá.
                   </div>
                 );
               })()}
@@ -1684,7 +1726,11 @@ function InventoryExtractor() {
                           <input className="grp-input grp-mon" aria-label="Món" placeholder="Tên món…" value={r.mon} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "mon", e.target.value)} />
                           <input className="grp-input grp-vl" aria-label="Vật liệu" placeholder="Vật liệu / finish…" value={r.vat_lieu} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "vat_lieu", e.target.value)} />
                         </div>
-                        <span className={"grp-sl" + (r.instances.length === 0 ? " qty-zero" : "")} title={r.instances.length === 0 ? "Chưa gắn ký hiệu" : "Số lượng = tổng số ký hiệu trên tất cả ảnh"}>{r.instances.length}</span>
+                        <input type="number" min="0" className={"grp-input grp-sl" + (qtyOf(r) === 0 ? " qty-zero" : "")} aria-label="Số lượng"
+                          title="Số lượng do AI đếm — có thể sửa tay"
+                          value={r.soLuong != null ? r.soLuong : (r.instances.length || "")}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => updateRow(r.id, "soLuong", e.target.value)} />
                         <select className="grp-select" aria-label="Độ tin cậy" value={r.do_tin_cay} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "do_tin_cay", e.target.value)}>
                           {(r.do_tin_cay && !TINCAY_OPTS.includes(r.do_tin_cay) ? [r.do_tin_cay, ...TINCAY_OPTS] : TINCAY_OPTS).map((o) => <option key={o} value={o}>{o}</option>)}
                         </select>
