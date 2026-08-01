@@ -440,7 +440,13 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 .marker { position:absolute; transform:translate(-50%,-50%); min-width:24px; height:24px; padding:0 6px; border-radius:12px; background:rgba(255,255,255,0.10); color:#fff;
   font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid rgba(255,255,255,0.35); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:pointer; line-height:1; touch-action:none; opacity:.75; }
 .marker.dim { opacity:.42; } .marker.active { background:var(--amber); color:#2a1c05; transform:translate(-50%,-50%) scale(1.18); z-index:5; opacity:1; box-shadow:0 0 0 3px rgba(224,164,74,.35),0 2px 8px rgba(0,0,0,.5); }
-.marker.cropping { opacity:1; box-shadow:0 0 0 2px var(--ac3,#9dc0e6), 0 0 0 4px rgba(157,192,230,0.35), 0 2px 8px rgba(0,0,0,.5); z-index:7; }
+.marker.cropping { background:rgba(255,255,255,0.14); color:#fff; border-color:rgba(255,255,255,0.6); opacity:.72; transform:translate(-50%,-50%);
+  box-shadow:0 0 0 2px rgba(157,192,230,0.55), 0 2px 8px rgba(0,0,0,.45); z-index:7; }
+.marker.cropping.hl { opacity:1; }
+.marker-del { position:absolute; left:100%; top:0; transform:translate(-35%,-60%); width:18px; height:18px; border-radius:50%;
+  background:#e08a8a; color:#2a0c0c; border:2px solid #0c1524; display:flex; align-items:center; justify-content:center;
+  pointer-events:auto; cursor:pointer; z-index:6; box-shadow:0 2px 6px rgba(0,0,0,.5); padding:0; }
+.marker-del:hover { filter:brightness(1.08); }
 .imgwrap.edit .marker { cursor:grab; }
 .hint { font-size:11.5px; color:var(--mut); margin-top:11px; line-height:1.5; } .hint.edit-on { color:var(--amber2); }
 
@@ -452,6 +458,14 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 .sheet-tab.on { background:rgba(123,163,207,0.14); color:var(--ac3); border-color:rgba(123,163,207,0.5); }
 .sheet-tab .tab-n { font-size:10.5px; font-weight:700; color:var(--mut2); background:rgba(255,255,255,0.06); border-radius:20px; padding:1px 7px; }
 .sheet-tab.on .tab-n { color:var(--ac2); }
+.img-filter { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0 0 12px; }
+.imgf-label { font-size:11px; font-weight:600; color:var(--mut2); margin-right:2px; }
+.imgf-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; font-size:11.5px; font-weight:600; color:var(--tx3);
+  background:#0f1626; border:1px solid rgba(255,255,255,0.08); border-radius:20px; cursor:pointer; transition:background .15s,color .15s,border-color .15s; }
+.imgf-chip:hover { color:var(--tx); border-color:rgba(255,255,255,0.18); }
+.imgf-chip.on { background:rgba(123,163,207,0.16); color:var(--ac3); border-color:rgba(123,163,207,0.55); }
+.imgf-chip .tab-n { font-size:10px; font-weight:700; color:var(--mut2); background:rgba(255,255,255,0.06); border-radius:20px; padding:1px 6px; }
+.imgf-chip.on .tab-n { color:var(--ac2); }
 .sched-wrap { border:1px solid var(--line); border-radius:14px; background:var(--panel2); overflow:hidden; }
 .sched-scroll { overflow-x:auto; }
 table.sched { border-collapse:collapse; width:100%; min-width:1000px; font-family:var(--sans); font-size:12.5px; }
@@ -480,7 +494,7 @@ table.sched { border-collapse:collapse; width:100%; min-width:1000px; font-famil
 .col-act { width:44px; } td.act { text-align:center; }
 .icon-danger { background:transparent; border:none; color:var(--mut2); cursor:pointer; padding:7px; border-radius:7px; display:inline-flex; }
 .icon-danger:hover { color:#e08a8a; background:rgba(214,79,79,0.12); }
-.grp-row .icon-danger { flex:0 0 34px; width:34px; justify-content:center; align-items:center; padding:7px 0; }
+.grp-row .icon-danger { flex:0 0 30px; width:30px; justify-content:center; align-items:center; padding:7px 0; }
 .grp-row .axchk { margin:0; flex:0 0 auto; }
 .toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:14px; } .toolbar .spacer { flex:1; }
 
@@ -560,7 +574,7 @@ const cssExtra = `
 .lb-meta { font-size:11.5px; color:var(--mut2); text-align:center; line-height:1.6; }
 
 /* A+B — dòng chưa gắn ký hiệu (SL=0) */
-.pin-btn { display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; width:72px; height:72px; flex:0 0 auto; padding:6px 6px; font-size:12px; font-weight:700; color:var(--ac2);
+.pin-btn { display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; width:72px; height:72px; flex:0 0 auto; padding:6px 6px; font-size:10px; font-weight:700; color:var(--ac2);
   background:transparent; border:1.5px dashed rgba(123,163,207,0.5); border-radius:8px; cursor:pointer; white-space:nowrap; line-height:1.15; text-align:center; }
 .pin-btn:hover { background:var(--acsoft); border-color:var(--ac2); color:var(--ac3); }
 .qty-cell.qty-zero { color:var(--amber2); font-weight:700; }
@@ -622,7 +636,7 @@ const cssExtra = `
 
 /* ===== Bảng vật liệu GỘP THEO NHÓM (thay cho <table class="sched">) ===== */
 .grp-wrap { border:1px solid var(--line); border-radius:14px; background:var(--panel2); overflow:hidden; }
-.grp-head { padding:8px 12px; background:#0e1526; font-size:16px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; border-bottom:1px solid var(--line2); display:flex; align-items:center; gap:7px; position:sticky; top:0; z-index:2; }
+.grp-head { padding:7px 12px; background:#0e1526; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; border-bottom:1px solid var(--line2); display:flex; align-items:center; gap:7px; position:sticky; top:0; z-index:2; }
 .grp-dot { width:8px; height:8px; border-radius:2px; display:inline-block; flex:0 0 auto; }
 .grp-row { display:flex; align-items:center; gap:9px; padding:7px 12px; border-bottom:1px solid var(--line); border-left:3px solid transparent; cursor:pointer; transition:background .12s; }
 .grp-row.active-row { background:rgba(123,163,207,0.12); }
@@ -632,27 +646,27 @@ const cssExtra = `
 .grp-thumb-ph { width:72px; height:72px; border-radius:8px; border:1px dashed var(--line2); background:var(--input); display:inline-block; flex:0 0 auto; }
 .grp-input { background:transparent; border:none; font-family:var(--sans); color:var(--tx2); outline:none; }
 .grp-input::placeholder { color:var(--faint); }
-.grp-stt { width:32px; flex:0 0 auto; text-align:center; font-size:20px; font-weight:700; color:var(--mut2); }
-.grp-cap-stt { width:32px; flex:0 0 auto; text-align:center; }
-.grp-code { width:78px; flex:0 0 auto; font-weight:700; color:var(--ac3); font-size:21px; padding:5px 0; }
-.grp-main { flex:1; min-width:140px; display:flex; flex-direction:column; }
-.grp-mon { font-size:22px; padding:2px 0; }
-.grp-vl { font-size:19px; color:var(--mut2); padding:1px 0; }
+.grp-stt { width:26px; flex:0 0 auto; text-align:center; font-size:14px; font-weight:700; color:var(--mut2); }
+.grp-cap-stt { width:26px; flex:0 0 auto; text-align:center; }
+.grp-code { width:60px; flex:0 0 auto; font-weight:700; color:var(--ac3); font-size:15px; padding:5px 0; }
+.grp-main { flex:1; min-width:120px; display:flex; flex-direction:column; }
+.grp-mon { font-size:15px; padding:2px 0; }
+.grp-vl { font-size:13px; color:var(--mut2); padding:1px 0; }
 .grp-vitri { width:110px; flex:0 0 auto; font-size:11px; color:var(--tx3); padding:5px 4px; }
-.grp-sl { width:34px; flex:0 0 auto; text-align:center; font-size:20px; font-weight:700; color:var(--tx2); }
+.grp-sl { width:28px; flex:0 0 auto; text-align:center; font-size:14px; font-weight:700; color:var(--tx2); }
 .grp-sl.qty-zero { color:var(--amber2); }
-.grp-select { width:130px; flex:0 0 auto; background:transparent; border:none; font-family:var(--sans); color:var(--tx3); font-size:20px; padding:5px 0; cursor:pointer; }
+.grp-select { width:104px; flex:0 0 auto; background:transparent; border:none; font-family:var(--sans); color:var(--tx3); font-size:14px; padding:5px 0; cursor:pointer; }
 .grp-select option { background:#101725; color:var(--tx2); }
 .grp-note { width:110px; flex:0 0 auto; font-size:10.5px; color:var(--faint); padding:5px 4px; }
-.grp-caption { display:flex; align-items:center; gap:9px; padding:6px 12px; background:#0e1526; border-bottom:1px solid var(--line2); font-size:16px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--mut2); position:sticky; top:0; z-index:3; }
+.grp-caption { display:flex; align-items:center; gap:9px; padding:6px 12px; background:#0e1526; border-bottom:1px solid var(--line2); font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--mut2); position:sticky; top:0; z-index:3; }
 .grp-cap-sel { width:15px; flex:0 0 auto; }
 .grp-cap-thumb { width:72px; flex:0 0 auto; }
-.grp-cap-code { width:78px; flex:0 0 auto; }
-.grp-cap-main { flex:1; min-width:140px; }
+.grp-cap-code { width:60px; flex:0 0 auto; }
+.grp-cap-main { flex:1; min-width:120px; }
 .grp-cap-vitri { width:110px; flex:0 0 auto; }
-.grp-cap-sl { width:34px; flex:0 0 auto; text-align:center; }
-.grp-cap-select { width:130px; flex:0 0 auto; }
-.grp-cap-act { width:34px; flex:0 0 auto; }
+.grp-cap-sl { width:28px; flex:0 0 auto; text-align:center; }
+.grp-cap-select { width:104px; flex:0 0 auto; }
+.grp-cap-act { width:30px; flex:0 0 auto; }
 `;
 
 // Lấy tiền tố nhóm mã của 1 dòng: ưu tiên phần chữ trong "ma" (vd "F-03" -> "F"),
@@ -710,6 +724,7 @@ function InventoryExtractor() {
   const [search, setSearch] = useState("");                  // C2: tìm nhanh
   const [onlyLow, setOnlyLow] = useState(false);             // C2: chỉ hiện tin cậy Thấp
   const [onlyUnpinned, setOnlyUnpinned] = useState(false);   // A: chỉ hiện dòng chưa gắn ký hiệu (SL=0)
+  const [imgFilter, setImgFilter] = useState(null);          // lọc bảng: null = tất cả ảnh; hoặc imgId của 1 ảnh phối cảnh
   const [undoStack, setUndoStack] = useState([]);            // B5: hoàn tác thao tác xoá/gộp/tách
   const [lightbox, setLightbox] = useState(null);            // C3: { code, title, src, meta }
   const [infoOpen, setInfoOpen] = useState(true);            // banner Thông tin dự án: hiện/ẩn
@@ -898,6 +913,7 @@ function InventoryExtractor() {
       return next;
     });
     setRows((rs) => sortRows(codeItems(mergeRows(stripImageInstances(rs, id), gpOf), gpOf)));
+    setImgFilter((f) => (f === id ? null : f));
     setSelected(new Set());
     setStatus("Đã gỡ 1 ảnh và cập nhật lại bảng (gộp trùng, đánh mã lại).");
   }
@@ -1183,6 +1199,17 @@ function InventoryExtractor() {
     window.addEventListener("pointermove", onMove); window.addEventListener("pointerup", onUp);
   }
 
+  // Xóa 1 ký hiệu (box) cụ thể của dòng — dùng nút "x" khi đang chỉnh vùng crop.
+  function deleteInstance(rowId, instIdx) {
+    setRows((rs) => rs.map((r) => {
+      if (r.id !== rowId) return r;
+      const insts = r.instances.filter((_, i) => i !== instIdx);
+      const first = insts[0];
+      const thumb = first ? (elReady(first.imgId) ? makeThumb(getEl(first.imgId), first) : r.thumb) : null;
+      return { ...r, instances: insts, thumb };
+    }));
+  }
+
   function buildCategorySheet(cat, list) {
     const aoa = [], merges = [];
     aoa.push(["CHỈ DẪN KỸ THUẬT VẬT LIỆU / MATERIAL SPECIFICATION"]);
@@ -1354,7 +1381,7 @@ function InventoryExtractor() {
   // C2: hàm khớp tìm kiếm (bỏ dấu) trên món/mã/vật liệu/vị trí
   const q = stripVN(search).trim();
   const matchSearch = (r) => !q || stripVN([r.ma, r.mon, r.vat_lieu, r.vi_tri, r.nhom].join(" ")).indexOf(q) >= 0;
-  const passFilter = (r) => (curSheet === ALL_SHEET || r.nhom === curSheet) && (!onlyLow || r.do_tin_cay === "Thấp") && (!onlyUnpinned || r.instances.length === 0) && matchSearch(r);
+  const passFilter = (r) => (curSheet === ALL_SHEET || r.nhom === curSheet) && (!onlyLow || r.do_tin_cay === "Thấp") && (!onlyUnpinned || r.instances.length === 0) && (imgFilter == null || r.instances.some((b) => b.imgId === imgFilter)) && matchSearch(r);
   const visibleCount = rows.filter(passFilter).length;
   const unpinnedN = rows.filter((r) => r.instances.length === 0).length; // A: số dòng chưa gắn ký hiệu
   const selCount = rows.filter((r) => selected.has(r.id)).length;
@@ -1454,7 +1481,11 @@ function InventoryExtractor() {
                     const cropFocusId = markerEdit ? activeId : cropRowId;   // đang chỉnh crop -> chỉ hiện marker của dòng này
                     if (cropFocusId != null && m.rowId !== cropFocusId) return null; // tạm ẩn các ký hiệu khác; xong (thoát crop) sẽ hiện lại
                     const cropUnlocked = m.rowId === cropRowId;
-                    const cls = "marker" + (activeId != null ? (m.rowId === activeId ? " active" : " dim") : "") + (m.rowId === hoverId ? " hl" : "") + (cropUnlocked ? " cropping" : "");
+                    // #4: khi đang chỉnh crop (double-click) -> KHÔNG tô vàng (active), dùng trắng mờ (cropping) để nhìn xuyên vùng crop.
+                    let stateCls = "";
+                    if (cropUnlocked) stateCls = " cropping";
+                    else if (activeId != null) stateCls = (m.rowId === activeId ? " active" : " dim");
+                    const cls = "marker" + stateCls + (m.rowId === hoverId ? " hl" : "");
                     const showDone = (markerEdit && m.rowId === activeId) || cropUnlocked;
                     return (<div key={m.rowId + "-" + m.instIdx} className={cls} style={{ left: m.leftPct + "%", top: m.topPct + "%" }}
                       title={(m.rowIdx + 1) + ". " + ((rows[m.rowIdx] && rows[m.rowIdx].mon) || "—")}
@@ -1462,6 +1493,11 @@ function InventoryExtractor() {
                       onPointerDown={(e) => startMarker(e, m.rowId, m.instIdx)} onClick={(e) => e.stopPropagation()}
                       onDoubleClick={(e) => { e.stopPropagation(); setActiveId(m.rowId); if (!markerEdit) setCropRowId((prev) => (prev === m.rowId ? null : m.rowId)); }}>
                       {m.rowIdx + 1}
+                      {showDone && (
+                        <button className="marker-del" title="Xóa bớt ký hiệu này" aria-label="Xóa ký hiệu này"
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => { e.stopPropagation(); deleteInstance(m.rowId, m.instIdx); }}><XIcon width={11} height={11} /></button>
+                      )}
                       {showDone && (
                         <button className="marker-done" title={cropUnlocked ? "Khoá lại vùng crop" : "Xong — thoát chỉnh crop"} aria-label={cropUnlocked ? "Khoá lại" : "Xong"}
                           onPointerDown={(e) => e.stopPropagation()}
@@ -1562,6 +1598,23 @@ function InventoryExtractor() {
               </div>
             )}
 
+            {hasRows && images.length > 1 && (
+              <div className="img-filter" role="tablist" aria-label="Lọc theo ảnh phối cảnh">
+                <span className="imgf-label">Lọc theo ảnh:</span>
+                <button className={"imgf-chip" + (imgFilter == null ? " on" : "")} onClick={() => setImgFilter(null)}>Tất cả ảnh</button>
+                {images.map((im, i) => {
+                  const cnt = rows.filter((r) => r.instances.some((b) => b.imgId === im.id)).length;
+                  return (
+                    <button key={im.id} className={"imgf-chip" + (imgFilter === im.id ? " on" : "")}
+                      onClick={() => setImgFilter((v) => (v === im.id ? null : im.id))}
+                      title={"Chỉ hiện ký hiệu thuộc ảnh phối cảnh #" + (i + 1)}>
+                      Ảnh {i + 1}<span className="tab-n">{cnt}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {hasRows && (
               <div className="filterbar">
                 <div className="searchbox">
@@ -1575,7 +1628,7 @@ function InventoryExtractor() {
                 <button className={"chip-toggle" + (onlyUnpinned ? " on" : "")} onClick={() => setOnlyUnpinned((v) => !v)} title="Chỉ hiện dòng chưa gắn ký hiệu (SL=0, không có hình/chấm)">
                   <span className="dotc" style={{ background: "var(--ac)" }} /> Chưa gắn KH{unpinnedN ? " (" + unpinnedN + ")" : ""}
                 </button>
-                {(q || onlyLow || onlyUnpinned || curSheet !== ALL_SHEET) && <span className="filter-note">Hiện {visibleCount}/{rows.length} dòng</span>}
+                {(q || onlyLow || onlyUnpinned || imgFilter != null || curSheet !== ALL_SHEET) && <span className="filter-note">Hiện {visibleCount}/{rows.length} dòng</span>}
               </div>
             )}
 
@@ -1640,7 +1693,7 @@ function InventoryExtractor() {
                 <div className="empty"><div className="eyebrow">Chưa có dữ liệu</div><div className="msg">Tải một hoặc nhiều ảnh phối cảnh và bấm <b>Phân tích tất cả</b> để bắt đầu — hoặc <b>Thêm dòng</b> để nhập tay.</div></div>
               )}
               {hasRows && visibleCount === 0 && (
-                <div className="empty"><div className="msg">Không có dòng nào khớp bộ lọc. <b onClick={() => { setSearch(""); setOnlyLow(false); setOnlyUnpinned(false); setActiveSheet(ALL_SHEET); }} style={{ cursor: "pointer", color: "var(--ac2)" }}>Xoá bộ lọc</b></div></div>
+                <div className="empty"><div className="msg">Không có dòng nào khớp bộ lọc. <b onClick={() => { setSearch(""); setOnlyLow(false); setOnlyUnpinned(false); setImgFilter(null); setActiveSheet(ALL_SHEET); }} style={{ cursor: "pointer", color: "var(--ac2)" }}>Xoá bộ lọc</b></div></div>
               )}
             </div>
 
