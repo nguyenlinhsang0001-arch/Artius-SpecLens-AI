@@ -457,7 +457,14 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 .img-placeholder .ico { width:52px; height:52px; border-radius:14px; background:rgba(123,163,207,0.12); display:flex; align-items:center; justify-content:center; color:var(--ac2); }
 .marker { position:absolute; transform:translate(-50%,-50%); min-width:24px; height:24px; padding:0 6px; border-radius:12px; background:rgba(255,255,255,0.10); color:#fff;
   font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid rgba(255,255,255,0.35); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:pointer; line-height:1; touch-action:none; opacity:.75; }
-.marker.dim { opacity:.42; } .marker.active { background:rgba(255,255,255,0.10); color:#fff; border:2px solid var(--green); transform:translate(-50%,-50%) scale(1.15); z-index:5; opacity:1; box-shadow:0 0 0 2px rgba(127,216,171,0.4),0 2px 8px rgba(0,0,0,.5); }
+.marker.dim { opacity:.42; } .marker.active { background:rgba(255,255,255,0.12); color:#fff; border:1.5px solid rgba(127,216,171,0.5); transform:translate(-50%,-50%) scale(1.15); z-index:6; opacity:1; box-shadow:0 2px 8px rgba(0,0,0,.5); }
+.marker.active::before { content:""; position:absolute; inset:-4px; border-radius:999px; pointer-events:none; padding:2.5px;
+  background:conic-gradient(from 0deg, rgba(127,216,171,0) 0deg, rgba(127,216,171,0.12) 140deg, #7fd8ab 275deg, #d8ffe9 330deg, #7fd8ab 360deg);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite:exclude;
+  animation:mk-ring-spin 1.15s linear infinite; }
+@keyframes mk-ring-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .marker.active::before { animation:none; background:#7fd8ab; } }
 .marker.cropping { cursor:grab; background:rgba(255,255,255,0.14); color:#fff; border-color:rgba(255,255,255,0.6); opacity:.72; transform:translate(-50%,-50%);
   box-shadow:0 0 0 2px rgba(157,192,230,0.55), 0 2px 8px rgba(0,0,0,.45); z-index:7; }
 .marker.cropping:active { cursor:grabbing; }
@@ -726,6 +733,15 @@ function groupRowsByNhom(rows) {
   return order.map((k) => ({ key: k, rows: rows.filter((r) => r.nhom === k) })).filter((g) => g.rows.length > 0);
 }
 
+// Đánh SỐ ký hiệu theo ĐÚNG thứ tự hiển thị trong bảng: gom theo NHÓM (hạng mục, thứ tự NHOM_OPTS),
+// trong mỗi nhóm giữ nguyên thứ tự dòng (đã sort theo mã tăng dần). Nhờ vậy số ký hiệu trên ảnh &
+// STT trong bảng luôn TĂNG DẦN theo loại hạng mục, không lộn xộn. Trả về Map: rowId -> số thứ tự (1..N).
+function buildDisplayNo(rows) {
+  const m = new Map(); let n = 0;
+  groupRowsByNhom(rows).forEach((g) => g.rows.forEach((r) => { n += 1; m.set(r.id, n); }));
+  return m;
+}
+
 function InventoryExtractor() {
   const [rows, setRows] = useState([]);
   // Danh sách nhiều ảnh. Mỗi ảnh: { id, preview(dataURL), imgData(base64), mediaType, fileName, status }
@@ -853,6 +869,9 @@ function InventoryExtractor() {
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
   }, []);
+
+  // Số thứ tự ký hiệu theo thứ tự hiển thị (gom nhóm) — dùng cho marker trên ảnh & STT trong bảng.
+  const displayNo = useMemo(() => buildDisplayNo(rows), [rows]);
 
   // Ký hiệu (marker) hiển thị trên ảnh — CHỈ những box thuộc ảnh đang xem
   const markerLayout = useMemo(() => {
@@ -1327,8 +1346,9 @@ function InventoryExtractor() {
     const c = document.createElement("canvas"); c.width = nw; c.height = nh;
     const ctx = c.getContext("2d"); ctx.drawImage(img, 0, 0);
     const r = Math.max(13, Math.round(Math.min(nw, nh) * 0.02));
+    const dispNo = buildDisplayNo(rows);
     const flat = [];
-    rows.forEach((row, idx) => row.instances.forEach((b) => { if (b.imgId !== imgId) return; flat.push({ idx, x: ((b.x1 + b.x2) / 2) * nw, y: ((b.y1 + b.y2) / 2) * nh }); }));
+    rows.forEach((row) => row.instances.forEach((b) => { if (b.imgId !== imgId) return; flat.push({ no: dispNo.get(row.id) || 0, x: ((b.x1 + b.x2) / 2) * nw, y: ((b.y1 + b.y2) / 2) * nh }); }));
     if (!flat.length) return null;
     const sep = separate(flat.map((f) => ({ x: f.x, y: f.y })), r * 2.3, nw, nh);
     ctx.font = "bold " + Math.round(r * 1.15) + "px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -1336,7 +1356,7 @@ function InventoryExtractor() {
       const cx = sep[i].x, cy = sep[i].y;
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = "rgba(123,163,207,0.95)"; ctx.fill();
       ctx.lineWidth = Math.max(1, r * 0.14); ctx.strokeStyle = "#0c1524"; ctx.stroke();
-      ctx.fillStyle = "#0c1524"; ctx.fillText(String(f.idx + 1), cx, cy);
+      ctx.fillStyle = "#0c1524"; ctx.fillText(String(f.no), cx, cy);
     });
     return c.toDataURL("image/jpeg", 0.9);
   }
@@ -1520,12 +1540,13 @@ function InventoryExtractor() {
                     if (activeId != null) stateCls = (m.rowId === activeId ? " active" : " dim");
                     const cls = "marker" + stateCls + (m.rowId === hoverId ? " hl" : "");
                     const showDone = markerEdit && m.rowId === activeId;
+                    const no = displayNo.get(m.rowId) || (m.rowIdx + 1);
                     return (<div key={m.rowId + "-" + m.instIdx} className={cls} style={{ left: m.leftPct + "%", top: m.topPct + "%" }}
-                      title={(m.rowIdx + 1) + ". " + ((rows[m.rowIdx] && rows[m.rowIdx].mon) || "—")}
+                      title={no + ". " + ((rows[m.rowIdx] && rows[m.rowIdx].mon) || "—")}
                       onPointerEnter={() => setHoverId(m.rowId)} onPointerLeave={() => setHoverId((h) => (h === m.rowId ? null : h))}
                       onPointerDown={(e) => startMarker(e, m.rowId, m.instIdx)} onClick={(e) => e.stopPropagation()}
                       onDoubleClick={(e) => { e.stopPropagation(); setActiveId(m.rowId); if (!markerEdit) setCropRowId((prev) => (prev === m.rowId ? null : m.rowId)); }}>
-                      {m.rowIdx + 1}
+                      {no}
                       {showDone && (
                         <button className="marker-del" title="Xóa bớt ký hiệu này" aria-label="Xóa ký hiệu này"
                           onPointerDown={(e) => e.stopPropagation()}
@@ -1548,8 +1569,7 @@ function InventoryExtractor() {
                       <div key={"crop-" + r.id + "-" + i} className={"cropbox" + (unlocked ? " unlocked" : "")}
                         style={{ left: (b.x1 * 100) + "%", top: (b.y1 * 100) + "%", width: ((b.x2 - b.x1) * 100) + "%", height: ((b.y2 - b.y1) * 100) + "%" }}
                         onPointerDown={unlocked ? (e) => startMarker(e, r.id, i) : undefined}
-                        onClick={unlocked ? (e) => e.stopPropagation() : undefined}
-                        title={unlocked ? "Kéo giữa vùng crop để di chuyển · kéo các chấm để chỉnh kích thước" : undefined}>
+                        onClick={unlocked ? (e) => e.stopPropagation() : undefined}>
                         {["nw", "n", "ne", "e", "se", "s", "sw", "w"].map((d) => (
                           <span key={d} className={"crop-h h-" + d}
                             onPointerDown={(e) => startResize(e, r.id, i, d)} onClick={(e) => e.stopPropagation()} />
@@ -1584,14 +1604,6 @@ function InventoryExtractor() {
                     : "Chọn một dòng trong bảng, rồi bấm lên ảnh để đặt ký hiệu."}
                 </div>
               )}
-              {activeImage && !markerEdit && cropRowId != null && (() => {
-                const cr = rows.find((x) => x.id === cropRowId); const ci = cr ? rows.indexOf(cr) : -1;
-                return (
-                  <div className="hint edit-on">
-                    Đã mở khoá vùng crop cho ký hiệu #{ci + 1} ({(cr && cr.mon) || "—"}) — kéo GIỮA vùng crop để di chuyển · kéo các chấm ở góc/cạnh để chỉnh kích thước · bấm ✓ (góc trên-phải) hoặc bấm ra vùng trống để khoá.
-                  </div>
-                );
-              })()}
 
               <div className="ctl-row dl-row">
                 <div className="dl-menu-wrap" ref={dlMenuRef}>
@@ -1715,7 +1727,7 @@ function InventoryExtractor() {
                         onClick={() => selectRow(r)}
                         onMouseEnter={() => setHoverId(r.id)} onMouseLeave={() => setHoverId((h) => (h === r.id ? null : h))}>
                         <input type="checkbox" className="axchk" aria-label="Chọn dòng" checked={selected.has(r.id)} onClick={(e) => e.stopPropagation()} onChange={() => toggleSelect(r.id)} />
-                        <span className="grp-stt">{rows.indexOf(r) + 1}</span>
+                        <span className="grp-stt">{displayNo.get(r.id) || (rows.indexOf(r) + 1)}</span>
                         {r.thumb
                           ? <img className="grp-thumb" src={r.thumb} alt={r.mon} title="Bấm để phóng to soi crop" onClick={(e) => { e.stopPropagation(); openLightbox(r); }} />
                           : (r.instances.length === 0
