@@ -395,6 +395,8 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 .dl-menu-wrap { position:relative; display:inline-flex; }
 .dl-menu { position:absolute; top:calc(100% + 6px); left:0; z-index:30; min-width:210px; padding:5px;
   background:var(--panel2); border:1px solid var(--line2); border-radius:11px; box-shadow:0 10px 28px rgba(0,0,0,0.5); }
+.dl-menu.dl-menu-up { top:auto; bottom:calc(100% + 6px); box-shadow:0 -10px 28px rgba(0,0,0,0.5); }
+.dl-row { margin-top:14px; margin-bottom:0; }
 .dl-menu-item { width:100%; display:flex; align-items:center; gap:9px; text-align:left; font-family:var(--sans); font-size:12.5px; font-weight:600;
   color:var(--tx2); background:transparent; border:0; border-radius:8px; padding:9px 11px; cursor:pointer; line-height:1.2; transition:background .12s,color .12s; }
 .dl-menu-item:hover { background:rgba(123,163,207,0.14); color:#fff; }
@@ -556,8 +558,8 @@ const cssExtra = `
 .lb-meta { font-size:11.5px; color:var(--mut2); text-align:center; line-height:1.6; }
 
 /* A+B — dòng chưa gắn ký hiệu (SL=0) */
-.pin-btn { display:inline-flex; align-items:center; gap:4px; padding:6px 8px; font-size:10.5px; font-weight:700; color:var(--ac2);
-  background:transparent; border:1.5px dashed rgba(123,163,207,0.5); border-radius:8px; cursor:pointer; white-space:nowrap; line-height:1; }
+.pin-btn { display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; width:72px; height:72px; flex:0 0 auto; padding:6px 6px; font-size:10px; font-weight:700; color:var(--ac2);
+  background:transparent; border:1.5px dashed rgba(123,163,207,0.5); border-radius:8px; cursor:pointer; white-space:nowrap; line-height:1.15; text-align:center; }
 .pin-btn:hover { background:var(--acsoft); border-color:var(--ac2); color:var(--ac3); }
 .qty-cell.qty-zero { color:var(--amber2); font-weight:700; }
 .sched tbody tr.row-unpinned td.stt-cell { box-shadow:inset 3px 0 0 var(--ac); }
@@ -577,7 +579,7 @@ const cssExtra = `
 .tb-stat.warn b { color:var(--amber2); }
 .tb-stat.info b { color:var(--ac2); }
 .tb-toggle { margin-left:auto; }
-.tb-fields { display:flex; gap:12px; flex-wrap:wrap; padding:2px 22px 15px; border-top:1px solid rgba(255,255,255,0.05); }
+.tb-fields { display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; padding:16px 22px 16px; border-top:1px solid rgba(255,255,255,0.05); }
 .tb-field { flex:1 1 170px; min-width:150px; }
 .tb-field label { font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); margin-bottom:4px; display:block; }
 .tb-field input { width:100%; background:var(--input); border:1px solid rgba(255,255,255,0.09); border-radius:9px; padding:8px 11px; color:var(--tx2); font-family:var(--sans); font-size:12.5px; outline:none; transition:border-color .15s; }
@@ -624,8 +626,8 @@ const cssExtra = `
 .grp-row.active-row { background:rgba(123,163,207,0.12); }
 .grp-row.hl-row { background:rgba(157,192,230,0.16) !important; }
 .grp-row.row-low { background:rgba(224,164,74,0.06); }
-.grp-thumb { width:36px; height:36px; object-fit:cover; border-radius:6px; border:1px solid var(--line2); cursor:zoom-in; flex:0 0 auto; }
-.grp-thumb-ph { width:36px; height:36px; border-radius:6px; border:1px dashed var(--line2); background:var(--input); display:inline-block; flex:0 0 auto; }
+.grp-thumb { width:72px; height:72px; object-fit:cover; border-radius:8px; border:1px solid var(--line2); cursor:zoom-in; flex:0 0 auto; }
+.grp-thumb-ph { width:72px; height:72px; border-radius:8px; border:1px dashed var(--line2); background:var(--input); display:inline-block; flex:0 0 auto; }
 .grp-input { background:transparent; border:none; font-family:var(--sans); color:var(--tx2); outline:none; }
 .grp-input::placeholder { color:var(--faint); }
 .grp-stt { width:24px; flex:0 0 auto; text-align:center; font-size:11px; font-weight:700; color:var(--mut2); }
@@ -642,7 +644,7 @@ const cssExtra = `
 .grp-note { width:110px; flex:0 0 auto; font-size:10.5px; color:var(--faint); padding:5px 4px; }
 .grp-caption { display:flex; align-items:center; gap:9px; padding:6px 12px; background:#0e1526; border-bottom:1px solid var(--line2); font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--mut2); position:sticky; top:0; z-index:3; }
 .grp-cap-sel { width:14px; flex:0 0 auto; }
-.grp-cap-thumb { width:36px; flex:0 0 auto; }
+.grp-cap-thumb { width:72px; flex:0 0 auto; }
 .grp-cap-code { width:64px; flex:0 0 auto; }
 .grp-cap-main { flex:1; min-width:120px; }
 .grp-cap-vitri { width:110px; flex:0 0 auto; }
@@ -1096,7 +1098,13 @@ function InventoryExtractor() {
 
   // Thêm ký hiệu (box) cho dòng đang chọn — box gắn với ẢNH ĐANG XEM (activeImgId)
   function onImageClick(e) {
-    if (!markerEdit) return;
+    if (!markerEdit) {
+      // Ngoài chế độ Thêm ký hiệu: bấm vùng trống -> bỏ tô màu (bỏ chọn dòng) & khoá lại vùng crop.
+      // Marker có stopPropagation nên handler này chỉ chạy khi bấm đúng vùng trống / nền ảnh.
+      if (activeId != null) setActiveId(null);
+      if (cropRowId != null) setCropRowId(null);
+      return;
+    }
     if (activeId == null) { setStatus("Hãy chọn một dòng trong bảng trước khi thêm ký hiệu."); return; }
     if (activeImgId == null) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -1403,25 +1411,6 @@ function InventoryExtractor() {
                 <button className="btn btn-ghost" onClick={analyzeActive} disabled={loading || !activeImage}><MapPin size={15} /> Phân tích ảnh này</button>
                 <button className="btn btn-primary" onClick={analyzeAll} disabled={loading || !hasImages}>{loading && <Loader2 size={15} className="spin" />}{loading ? "Đang phân tích…" : "Phân tích tất cả (" + images.length + ")"}</button>
               </div>
-              <div className="ctl-row">
-                <div className="dl-menu-wrap" ref={dlMenuRef}>
-                  <button className={"btn btn-ghost" + (dlMenuOpen ? " on" : "")} onClick={() => setDlMenuOpen((v) => !v)} disabled={!hasRows || !hasImages} aria-haspopup="menu" aria-expanded={dlMenuOpen}>
-                    <ImageDown size={15} /> Tải Ảnh <ChevronDown size={13} />
-                  </button>
-                  {dlMenuOpen && (
-                    <div className="dl-menu" role="menu">
-                      <button className="dl-menu-item" role="menuitem" disabled={!hasRows || !activeImage}
-                        onClick={() => { setDlMenuOpen(false); downloadAnnotated(); }}>
-                        <ImageDown size={14} /> <span>Tải 1 ảnh (ảnh đang xem)</span>
-                      </button>
-                      <button className="dl-menu-item" role="menuitem" disabled={!hasRows || !hasImages}
-                        onClick={() => { setDlMenuOpen(false); downloadAllAnnotated(); }}>
-                        <ImageDown size={14} /> <span>Tải tất cả ảnh</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
 
               {hasImages && (
                 <div className="imgstrip">
@@ -1503,6 +1492,26 @@ function InventoryExtractor() {
                   </div>
                 );
               })()}
+
+              <div className="ctl-row dl-row">
+                <div className="dl-menu-wrap" ref={dlMenuRef}>
+                  <button className={"btn btn-ghost" + (dlMenuOpen ? " on" : "")} onClick={() => setDlMenuOpen((v) => !v)} disabled={!hasRows || !hasImages} aria-haspopup="menu" aria-expanded={dlMenuOpen}>
+                    <ImageDown size={15} /> Tải Ảnh <ChevronUp size={13} />
+                  </button>
+                  {dlMenuOpen && (
+                    <div className="dl-menu dl-menu-up" role="menu">
+                      <button className="dl-menu-item" role="menuitem" disabled={!hasRows || !activeImage}
+                        onClick={() => { setDlMenuOpen(false); downloadAnnotated(); }}>
+                        <ImageDown size={14} /> <span>Tải 1 ảnh (ảnh đang xem)</span>
+                      </button>
+                      <button className="dl-menu-item" role="menuitem" disabled={!hasRows || !hasImages}
+                        onClick={() => { setDlMenuOpen(false); downloadAllAnnotated(); }}>
+                        <ImageDown size={14} /> <span>Tải tất cả ảnh</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
