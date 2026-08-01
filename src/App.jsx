@@ -425,7 +425,7 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 .crop-h::before { content:""; position:absolute; inset:-8px; } /* mở rộng vùng bắt kéo mà không phình phần nhìn thấy */
 .crop-h:hover { background:var(--ac3); }
 .marker-done { position:absolute; left:100%; top:100%; transform:translate(-35%,-35%); width:18px; height:18px; border-radius:50%;
-  background:var(--green); color:#0c1a12; border:2px solid #0c1524; display:flex; align-items:center; justify-content:center;
+  background:var(--green); color:#0c1a12; border:none; display:flex; align-items:center; justify-content:center;
   pointer-events:auto; cursor:pointer; z-index:6; box-shadow:0 2px 6px rgba(0,0,0,.5); padding:0; }
 .marker-done:hover { filter:brightness(1.08); }
 .h-nw { left:0; top:0; transform:translate(-50%,-50%); cursor:nwse-resize; }
@@ -439,12 +439,13 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 .img-placeholder .ico { width:52px; height:52px; border-radius:14px; background:rgba(123,163,207,0.12); display:flex; align-items:center; justify-content:center; color:var(--ac2); }
 .marker { position:absolute; transform:translate(-50%,-50%); min-width:24px; height:24px; padding:0 6px; border-radius:12px; background:rgba(255,255,255,0.10); color:#fff;
   font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid rgba(255,255,255,0.35); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:pointer; line-height:1; touch-action:none; opacity:.75; }
-.marker.dim { opacity:.42; } .marker.active { background:var(--amber); color:#2a1c05; transform:translate(-50%,-50%) scale(1.18); z-index:5; opacity:1; box-shadow:0 0 0 3px rgba(224,164,74,.35),0 2px 8px rgba(0,0,0,.5); }
-.marker.cropping { background:rgba(255,255,255,0.14); color:#fff; border-color:rgba(255,255,255,0.6); opacity:.72; transform:translate(-50%,-50%);
+.marker.dim { opacity:.42; } .marker.active { background:rgba(255,255,255,0.10); color:#fff; border:2px solid var(--green); transform:translate(-50%,-50%) scale(1.15); z-index:5; opacity:1; box-shadow:0 0 0 2px rgba(127,216,171,0.4),0 2px 8px rgba(0,0,0,.5); }
+.marker.cropping { cursor:grab; background:rgba(255,255,255,0.14); color:#fff; border-color:rgba(255,255,255,0.6); opacity:.72; transform:translate(-50%,-50%);
   box-shadow:0 0 0 2px rgba(157,192,230,0.55), 0 2px 8px rgba(0,0,0,.45); z-index:7; }
+.marker.cropping:active { cursor:grabbing; }
 .marker.cropping.hl { opacity:1; }
 .marker-del { position:absolute; left:100%; top:0; transform:translate(-35%,-60%); width:18px; height:18px; border-radius:50%;
-  background:#e08a8a; color:#2a0c0c; border:2px solid #0c1524; display:flex; align-items:center; justify-content:center;
+  background:#e08a8a; color:#2a0c0c; border:none; display:flex; align-items:center; justify-content:center;
   pointer-events:auto; cursor:pointer; z-index:6; box-shadow:0 2px 6px rgba(0,0,0,.5); padding:0; }
 .marker-del:hover { filter:brightness(1.08); }
 .imgwrap.edit .marker { cursor:grab; }
@@ -574,7 +575,7 @@ const cssExtra = `
 .lb-meta { font-size:11.5px; color:var(--mut2); text-align:center; line-height:1.6; }
 
 /* A+B — dòng chưa gắn ký hiệu (SL=0) */
-.pin-btn { display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; width:72px; height:72px; flex:0 0 auto; padding:6px 6px; font-size:10px; font-weight:700; color:var(--ac2);
+.pin-btn { display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; width:72px; height:72px; flex:0 0 auto; padding:6px 6px; font-size:9px; font-weight:700; color:var(--ac2);
   background:transparent; border:1.5px dashed rgba(123,163,207,0.5); border-radius:8px; cursor:pointer; white-space:nowrap; line-height:1.15; text-align:center; }
 .pin-btn:hover { background:var(--acsoft); border-color:var(--ac2); color:var(--ac3); }
 .qty-cell.qty-zero { color:var(--amber2); font-weight:700; }
@@ -636,7 +637,7 @@ const cssExtra = `
 
 /* ===== Bảng vật liệu GỘP THEO NHÓM (thay cho <table class="sched">) ===== */
 .grp-wrap { border:1px solid var(--line); border-radius:14px; background:var(--panel2); overflow:hidden; }
-.grp-head { padding:7px 12px; background:#0e1526; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; border-bottom:1px solid var(--line2); display:flex; align-items:center; gap:7px; position:sticky; top:0; z-index:2; }
+.grp-head { padding:7px 12px; background:#0e1526; font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; border-bottom:1px solid var(--line2); display:flex; align-items:center; gap:7px; position:sticky; top:0; z-index:2; }
 .grp-dot { width:8px; height:8px; border-radius:2px; display:inline-block; flex:0 0 auto; }
 .grp-row { display:flex; align-items:center; gap:9px; padding:7px 12px; border-bottom:1px solid var(--line); border-left:3px solid transparent; cursor:pointer; transition:background .12s; }
 .grp-row.active-row { background:rgba(123,163,207,0.12); }
@@ -646,19 +647,19 @@ const cssExtra = `
 .grp-thumb-ph { width:72px; height:72px; border-radius:8px; border:1px dashed var(--line2); background:var(--input); display:inline-block; flex:0 0 auto; }
 .grp-input { background:transparent; border:none; font-family:var(--sans); color:var(--tx2); outline:none; }
 .grp-input::placeholder { color:var(--faint); }
-.grp-stt { width:26px; flex:0 0 auto; text-align:center; font-size:14px; font-weight:700; color:var(--mut2); }
+.grp-stt { width:26px; flex:0 0 auto; text-align:center; font-size:11px; font-weight:700; color:var(--mut2); }
 .grp-cap-stt { width:26px; flex:0 0 auto; text-align:center; }
-.grp-code { width:60px; flex:0 0 auto; font-weight:700; color:var(--ac3); font-size:15px; padding:5px 0; }
+.grp-code { width:60px; flex:0 0 auto; font-weight:700; color:var(--ac3); font-size:12px; padding:5px 0; }
 .grp-main { flex:1; min-width:120px; display:flex; flex-direction:column; }
-.grp-mon { font-size:15px; padding:2px 0; }
-.grp-vl { font-size:13px; color:var(--mut2); padding:1px 0; }
+.grp-mon { font-size:12px; padding:2px 0; }
+.grp-vl { font-size:10px; color:var(--mut2); padding:1px 0; }
 .grp-vitri { width:110px; flex:0 0 auto; font-size:11px; color:var(--tx3); padding:5px 4px; }
-.grp-sl { width:28px; flex:0 0 auto; text-align:center; font-size:14px; font-weight:700; color:var(--tx2); }
+.grp-sl { width:28px; flex:0 0 auto; text-align:center; font-size:11px; font-weight:700; color:var(--tx2); }
 .grp-sl.qty-zero { color:var(--amber2); }
-.grp-select { width:104px; flex:0 0 auto; background:transparent; border:none; font-family:var(--sans); color:var(--tx3); font-size:14px; padding:5px 0; cursor:pointer; }
+.grp-select { width:104px; flex:0 0 auto; background:transparent; border:none; font-family:var(--sans); color:var(--tx3); font-size:11px; padding:5px 0; cursor:pointer; }
 .grp-select option { background:#101725; color:var(--tx2); }
 .grp-note { width:110px; flex:0 0 auto; font-size:10.5px; color:var(--faint); padding:5px 4px; }
-.grp-caption { display:flex; align-items:center; gap:9px; padding:6px 12px; background:#0e1526; border-bottom:1px solid var(--line2); font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--mut2); position:sticky; top:0; z-index:3; }
+.grp-caption { display:flex; align-items:center; gap:9px; padding:6px 12px; background:#0e1526; border-bottom:1px solid var(--line2); font-size:9px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--mut2); position:sticky; top:0; z-index:3; }
 .grp-cap-sel { width:15px; flex:0 0 auto; }
 .grp-cap-thumb { width:72px; flex:0 0 auto; }
 .grp-cap-code { width:60px; flex:0 0 auto; }
@@ -1150,7 +1151,9 @@ function InventoryExtractor() {
 
   function startMarker(e, rowId, instIdx) {
     e.stopPropagation(); setActiveId(rowId);
-    if (!markerEdit) return;
+    const inCrop = cropRowId === rowId;          // đang mở khoá kéo vùng crop cho đúng dòng này (double-click)
+    const canDrag = markerEdit || inCrop;         // chế độ Thêm ký hiệu HOẶC mở khoá crop -> cho phép kéo move
+    if (!canDrag) return;
     const wrap = wrapRef.current; if (!wrap) return;
     const rect = wrap.getBoundingClientRect();
     const row = rows.find((r) => r.id === rowId); const b = row && row.instances[instIdx]; if (!b) return;
@@ -1165,7 +1168,8 @@ function InventoryExtractor() {
     };
     const onUp = () => {
       window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp);
-      if (!moved) { setRows((rs) => rs.map((r) => (r.id === rowId ? { ...r, instances: r.instances.filter((_, i) => i !== instIdx) } : r))); }
+      // Chỉ CHẾ ĐỘ Thêm ký hiệu mới xóa khi click-không-kéo. Chế độ mở khoá crop: click không xóa (dùng nút "x").
+      if (!moved) { if (markerEdit && !inCrop) setRows((rs) => rs.map((r) => (r.id === rowId ? { ...r, instances: r.instances.filter((_, i) => i !== instIdx) } : r))); }
       else if (instIdx === 0 && elReady(b.imgId)) { setRows((rs) => rs.map((r) => { if (r.id !== rowId) return r; const first = r.instances[0]; return { ...r, thumb: first ? makeThumb(getEl(first.imgId), first) : r.thumb }; })); }
     };
     window.addEventListener("pointermove", onMove); window.addEventListener("pointerup", onUp);
