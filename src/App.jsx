@@ -136,6 +136,15 @@ LT|Đèn|Đèn tường|Gắn tường, ánh sáng ấm|Tường trái|Cao||0.18
 F|Nội thất|Sofa băng|Bọc vải, khung gỗ|Phòng khách|Cao||0.30,0.55,0.72,0.86
 J|Nội thất|Tủ tivi liền tường|Gỗ phủ laminate|Vách tivi|Cao||0.05,0.62,0.45,0.86`;
 
+// Prompt cho TẦNG 2 (đọc từng crop). Dùng lại toàn bộ quy tắc/taxonomy của PROMPT,
+// nhưng ép: ảnh là 1 crop chỉ chứa 1 vật -> trả ĐÚNG 1 dòng, cột boxes để TRỐNG
+// (toạ độ đã có từ tầng detect Gemini).
+const CROP_PROMPT = PROMPT +
+  "\n\n[CHẾ ĐỘ CROP] Ảnh dưới đây là 1 ẢNH CẮT (crop) chỉ chứa MỘT vật thể/chi tiết chính. " +
+  "Chỉ trả về ĐÚNG 1 DÒNG cho vật thể chính đó, theo đúng thứ tự cột đã nêu. " +
+  "Cột boxes để TRỐNG (hệ thống đã có toạ độ). so_luong=1 (trừ khi trong chính crop này thấy rõ nhiều bản y hệt). " +
+  "KHÔNG in header, KHÔNG markdown, KHÔNG giải thích.";
+
 let _uid = 0;
 const nextId = () => (_uid += 1);
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -308,6 +317,17 @@ function makeExportCrop(imgEl, box, maxPx = 440) {
     c.getContext("2d").drawImage(imgEl, sx, sy, sw, sh, 0, 0, dw, dh);
     return { data: c.toDataURL("image/jpeg", 0.85), w: dw, h: dh };
   } catch (e) { return null; }
+}
+
+// Bỏ tiền tố "data:image/...;base64," -> chỉ còn base64 (để gửi cho API).
+function b64of(dataUrl) { const i = String(dataUrl || "").indexOf(","); return i >= 0 ? dataUrl.slice(i + 1) : dataUrl; }
+
+// map có giới hạn số lời gọi song song (tránh dội rate-limit khi đọc nhiều crop cùng lúc).
+async function mapLimit(arr, limit, fn) {
+  const out = new Array(arr.length); let i = 0;
+  async function worker() { while (i < arr.length) { const idx = i++; out[idx] = await fn(arr[idx], idx); } }
+  await Promise.all(Array.from({ length: Math.min(Math.max(1, limit), arr.length || 1) }, worker));
+  return out;
 }
 
 function separate(pts, minDist, w, h, iters) {
@@ -971,7 +991,8 @@ function InventoryExtractor() {
   // và không có API key hợp lệ để gửi kèm. Body gửi lên GIỮ NGUYÊN như cũ, /api/analyze
   // chỉ chuyển tiếp nguyên văn sang Anthropic rồi trả nguyên văn kết quả về — không đổi gì
   // ở phần xử lý response bên dưới.
-  async function callAnalyze(imgId) {
+  // FALLBACK: Claude đọc CẢ ẢNH trong 1 lượt (luồng cũ) — dùng khi /api/detect chưa sẵn sàng.
+  async function callAnalyzeSingle(imgId) {
     const pic = apiImageFor(imgId);
     if (!pic.data) throw new Error("Ảnh chưa nạp xong, thử lại sau 1-2 giây.");
     let res;
@@ -999,6 +1020,67 @@ function InventoryExtractor() {
     if (data && data.type === "error") throw new Error(data.error ? data.error.message : "API trả về lỗi.");
     const textOut = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
     return parseItems(textOut);
+  }
+
+  // TẦNG 1 (grounding): gọi /api/detect (Gemini) -> danh sách vùng {label,count,x1,y1,x2,y2} trong [0..1].
+  async function detectRegionsApi(pic) {
+    const res = await fetch("/api/detect", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: { media_type: pic.media_type, data: pic.data } }),
+    });
+    if (!res.ok) throw new Error("detect HTTP " + res.status);
+    const j = await res.json();
+    return Array.isArray(j.regions) ? j.regions : [];
+  }
+
+  // TẦNG 2 (đọc): gửi 1 CROP cho Claude -> 1 item (dùng lại parseItems, lấy dòng đầu).
+  async function readCrop(cropB64) {
+    const res = await fetch("/api/analyze", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6", max_tokens: 400,
+        messages: [{ role: "user", content: [
+          { type: "image", source: { type: "base64", media_type: "image/jpeg", data: cropB64 } },
+          { type: "text", text: CROP_PROMPT },
+        ] }],
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && data.type === "error") return null;
+    const textOut = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
+    const items = parseItems(textOut);
+    return items[0] || null;
+  }
+
+  // Two-stage: detect (Gemini) -> crop hi-res -> read (Claude) từng vùng.
+  // Nếu /api/detect lỗi hoặc không có vùng nào -> FALLBACK về callAnalyzeSingle (Claude đọc cả ảnh).
+  async function callAnalyze(imgId) {
+    const pic = apiImageFor(imgId);
+    if (!pic.data) throw new Error("Ảnh chưa nạp xong, thử lại sau 1-2 giây.");
+    const el = getEl(imgId);
+    try {
+      if (el && el.naturalWidth) {
+        const regions = await detectRegionsApi(pic);
+        if (regions.length) {
+          // đọc tối đa 4 crop song song để không dội rate-limit
+          const read = await mapLimit(regions, 4, async (rg) => {
+            const crop = makeExportCrop(el, rg, 1000);
+            if (!crop || !crop.data) return null;
+            const one = await readCrop(b64of(crop.data));
+            if (!one) return null;
+            one.instances = [{ x1: rg.x1, y1: rg.y1, x2: rg.x2, y2: rg.y2 }];   // gắn box từ Gemini
+            if (rg.count && (one.soLuong == null || one.soLuong === "")) one.soLuong = rg.count; // SL do Gemini đếm
+            return one;
+          });
+          const clean = read.filter(Boolean);
+          if (clean.length) return clean;
+        }
+      }
+    } catch (e) {
+      // detect/crop lỗi -> rơi xuống fallback bên dưới (không chặn quy trình cũ)
+    }
+    return callAnalyzeSingle(imgId);
   }
 
   // Phân tích 1 ảnh rồi GỘP kết quả VÀO bảng hiện có (không thay thế).
