@@ -10,11 +10,7 @@
     "preview": "vite preview"
   },
   
-  {
-  "engines": {
-    "node": "24.x"
-  }
-}
+"engines": { "node": ">=22" },
   
   "dependencies": {
     "@google/genai": "^1.0.0",
