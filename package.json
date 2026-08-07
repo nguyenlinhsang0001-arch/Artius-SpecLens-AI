@@ -1,5 +1,5 @@
 {
-  "name": "artus-inventory-extractor",
+  "name": "artius-inventory-extractor",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -9,6 +9,9 @@
     "build": "vite build",
     "preview": "vite preview"
   },
+  
+  "engines": { "node": ">=22" }
+  
   "dependencies": {
     "@google/genai": "^1.0.0",
     "react": "^18.3.1",
