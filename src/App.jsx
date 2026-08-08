@@ -143,7 +143,13 @@ const CROP_PROMPT = PROMPT +
   "\n\n[CHẾ ĐỘ CROP] Ảnh dưới đây là 1 ẢNH CẮT (crop) chỉ chứa MỘT vật thể/chi tiết chính. " +
   "Chỉ trả về ĐÚNG 1 DÒNG cho vật thể chính đó, theo đúng thứ tự cột đã nêu. " +
   "Cột boxes để TRỐNG (hệ thống đã có toạ độ). so_luong=1 (trừ khi trong chính crop này thấy rõ nhiều bản y hệt). " +
-  "KHÔNG in header, KHÔNG markdown, KHÔNG giải thích.";
+  "KHÔNG in header, KHÔNG markdown, KHÔNG giải thích.\n" +
+  "PHÂN NHÓM (cột nhom) CHO ĐÚNG — chỉ dùng đúng một trong các giá trị: " +
+  "\"Nội thất\", \"Đèn\", \"Vật liệu bề mặt\", \"Cửa & Vách kính\", \"Hardware\", \"Trang trí\".\n" +
+  "- Phụ kiện TRANG TRÍ / bày biện: gối tựa & gối trang trí, khay, bình/lọ/chậu, giỏ/rổ, tranh, đồng hồ để bàn, sách bày, nến, tượng, cây & chậu cây, vật trang trí nhỏ -> nhom = \"Trang trí\" (TUYỆT ĐỐI KHÔNG xếp các thứ này vào \"Nội thất\").\n" +
+  "- Đồ NỘI THẤT chức năng: giường, ghế, sofa, tủ, kệ, bàn, táp đầu giường, đôn -> \"Nội thất\".\n" +
+  "- Đèn / thiết bị chiếu sáng -> \"Đèn\".\n" +
+  "Nếu có dòng 'Gợi ý loại vật' bên dưới, hãy dùng nó để xác định đúng vật và đúng nhóm.";
 
 // Prompt cho PASS BỀ MẶT — ĐỘC LẬP (KHÔNG kế thừa PROMPT), chỉ lấy vật liệu bề mặt/hoàn thiện.
 // Đồ rời (nội thất/đèn/thiết bị/gương/thảm) đã do tầng detect Gemini + đọc crop lo -> ở đây CẤM liệt kê
@@ -190,6 +196,43 @@ function mergeKey(pfx, mon, vat_lieu) {
 }
 // Tách chuỗi vị trí thành các phần rời (loại trùng) khi gộp dòng.
 const splitLocs = (s) => String(s || "").split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+
+// --- Khử trùng ĐỒ RỜI trong CÙNG 1 ẢNH (khi Gemini khoanh nhiều box cho cùng 1 vật) ---
+function _boxInter(a, b) {
+  const ix1 = Math.max(a.x1, b.x1), iy1 = Math.max(a.y1, b.y1);
+  const ix2 = Math.min(a.x2, b.x2), iy2 = Math.min(a.y2, b.y2);
+  return Math.max(0, ix2 - ix1) * Math.max(0, iy2 - iy1);
+}
+function _boxArea(a) { return Math.max(0, a.x2 - a.x1) * Math.max(0, a.y2 - a.y1); }
+function boxesOverlap(a, b) {
+  if (!a || !b) return false;
+  const inter = _boxInter(a, b); if (inter <= 0) return false;
+  const areaA = _boxArea(a), areaB = _boxArea(b);
+  const iou = inter / (areaA + areaB - inter);
+  const contain = inter / Math.max(1e-9, Math.min(areaA, areaB)); // phần nhỏ nằm trong phần lớn bao nhiêu
+  return iou > 0.35 || contain > 0.6;
+}
+// Cùng prefix + cùng tên món + box CHỒNG nhau -> gộp 1 dòng (giữ box lớn hơn, SL lấy MAX, gộp vị trí).
+// Đồ trùng tên nhưng box TÁCH RỜI (2 vật thật) -> giữ riêng.
+function dedupeObjects(items) {
+  const out = [];
+  for (const it of items) {
+    const box = it.instances && it.instances[0];
+    const key = String(it.prefix || "").toUpperCase() + "||" + normTokens(it.mon);
+    const hit = out.find((d) => d._k === key && boxesOverlap(d.instances && d.instances[0], box));
+    if (hit) {
+      const hb = hit.instances[0];
+      if (box && _boxArea(box) > _boxArea(hb)) hit.instances[0] = box;
+      const s1 = parseInt(hit.soLuong, 10), s2 = parseInt(it.soLuong, 10);
+      hit.soLuong = Math.max(Number.isFinite(s1) ? s1 : 1, Number.isFinite(s2) ? s2 : 1);
+      const locs = new Set(splitLocs(hit.vi_tri)); splitLocs(it.vi_tri).forEach((s) => locs.add(s));
+      hit.vi_tri = Array.from(locs).join(", ");
+    } else {
+      out.push({ ...it, _k: key });
+    }
+  }
+  return out.map((it) => { const { _k, ...rest } = it; return rest; });
+}
 
 // Gom tập id ẢNH NGUỒN của 1 item: từ srcImgs (đã gộp trước đó), srcImg (lúc phân tích), và imgId của các box.
 // Nhờ cái này, kể cả dòng CHƯA có box vẫn biết được nó bóc ra từ ảnh nào để gắn lại đúng chỗ.
@@ -1060,14 +1103,16 @@ function InventoryExtractor() {
   }
 
   // TẦNG 2 (đọc): gửi 1 CROP cho Claude -> 1 item (dùng lại parseItems, lấy dòng đầu).
-  async function readCrop(cropB64) {
+  // hintLabel = nhãn tiếng Anh do Gemini gán (vase/tray/basket/pillow...) -> giúp phân nhóm đúng.
+  async function readCrop(cropB64, hintLabel) {
+    const promptText = CROP_PROMPT + (hintLabel ? ("\n\nGợi ý loại vật (từ hệ phát hiện, tiếng Anh): " + hintLabel) : "");
     const res = await fetch("/api/analyze", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-6", max_tokens: 400,
         messages: [{ role: "user", content: [
           { type: "image", source: { type: "base64", media_type: "image/jpeg", data: cropB64 } },
-          { type: "text", text: CROP_PROMPT },
+          { type: "text", text: promptText },
         ] }],
       }),
     });
@@ -1113,7 +1158,7 @@ function InventoryExtractor() {
             mapLimit(regions, 4, async (rg) => {
               const crop = makeExportCrop(el, rg, 1000);
               if (!crop || !crop.data) return null;
-              const one = await readCrop(b64of(crop.data));
+              const one = await readCrop(b64of(crop.data), rg.label);   // truyền nhãn Gemini để phân nhóm đúng
               if (!one) return null;
               one.instances = [{ x1: rg.x1, y1: rg.y1, x2: rg.x2, y2: rg.y2 }];   // gắn box từ Gemini
               if (rg.count && (one.soLuong == null || one.soLuong === "")) one.soLuong = rg.count; // SL do Gemini đếm
@@ -1121,7 +1166,7 @@ function InventoryExtractor() {
             }),
             readSurfaces(pic).catch(() => []),
           ]);
-          const objectItems = read.filter(Boolean);
+          const objectItems = dedupeObjects(read.filter(Boolean));   // gộp box trùng cùng 1 vật (vd giường bị khoanh nhiều lần)
           const combined = [...objectItems, ...surfaceItems];   // đồ rời (Gemini) + bề mặt (Claude toàn ảnh)
           if (combined.length) return combined;
         }
