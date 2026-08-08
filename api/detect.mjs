@@ -22,15 +22,18 @@ const MODEL = process.env.GEMINI_DETECT_MODEL || "gemini-3.6-flash"; // TODO: x�
 
 // Prompt: chỉ khoanh VẬT THỂ RỜI (nội thất, đèn, thiết bị vệ sinh, cửa, decor).
 // KHÔNG khoanh bề mặt khuếch tán (sơn/đá mảng/gạch/giấy dán) — phần đó để Claude đọc theo vùng.
+// PASS-1 = ĐỊNH VỊ TỪNG CÁ THỂ. Không để Gemini tự gộp đồ giống nhau nữa:
+// việc "vật nào là cùng một sản phẩm" do tầng C (montage clustering ở client) quyết định,
+// dựa trên so sánh thị giác cạnh nhau — chính xác hơn Gemini nhiều. Ở đây chỉ cần: THẤY ĐỦ + KHOANH ĐÚNG.
 const DEFAULT_PROMPT =
-  "Detect the 2D bounding boxes of every distinct movable/fixed furniture item, " +
+  "Detect the 2D bounding box of EACH individual visible movable/fixed furniture item, " +
   "lighting fixture, sanitary fixture, door/window, and decor object in this interior render. " +
-  "For a group of identical repeated items, return only ONE box on the single clearest, " +
-  "least-occluded instance (foreground, well-lit). " +
+  "Return ONE box PER physical instance. Do NOT merge repeated identical items into a single box: " +
+  "if there are 6 identical chairs, return 6 separate boxes, one tightly on each chair. " +
   "Do NOT box diffuse surface finishes (paint, stone slab areas, tiles, wallpaper). " +
   "Never return masks. Limit to 40 objects. " +
   "Return a JSON array; each item has box_2d as [y_min, x_min, y_max, x_max] normalized 0-1000, " +
-  "a short English label, and count = how many identical items of this type are visible in the WHOLE image (integer >= 1).";
+  "a short English label, and count = 1 for a single instance (only > 1 if this ONE box genuinely covers several identical items you could not separate).";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -53,8 +56,8 @@ export default async function handler(req, res) {
       prompt ||
       (Array.isArray(target_classes) && target_classes.length
         ? `Detect the 2D bounding boxes of these object types if present: ${target_classes.join(", ")}. ` +
-          "For a group of identical repeated items, return only ONE box on the clearest instance. " +
-          "Never return masks. Limit to 40 objects. Each item: box_2d [y_min,x_min,y_max,x_max] normalized 0-1000, a short label, and count (integer >= 1) = how many identical items of this type are visible in the whole image."
+          "Return ONE box PER physical instance — do NOT merge identical repeats into one box. " +
+          "Never return masks. Limit to 40 objects. Each item: box_2d [y_min,x_min,y_max,x_max] normalized 0-1000, a short label, and count = 1 for a single instance (only > 1 if one box unavoidably covers several identical items)."
         : DEFAULT_PROMPT);
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
