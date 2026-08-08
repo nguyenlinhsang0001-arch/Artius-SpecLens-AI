@@ -145,16 +145,31 @@ const CROP_PROMPT = PROMPT +
   "Cột boxes để TRỐNG (hệ thống đã có toạ độ). so_luong=1 (trừ khi trong chính crop này thấy rõ nhiều bản y hệt). " +
   "KHÔNG in header, KHÔNG markdown, KHÔNG giải thích.";
 
-// Prompt cho PASS BỀ MẶT (đọc toàn ảnh, CHỈ lấy vật liệu bề mặt/hoàn thiện).
-// Đồ rời (nội thất/đèn/thiết bị) đã do tầng detect Gemini + đọc crop lo -> ở đây BỎ QUA
-// để tránh trùng và tập trung vào phần detector hay bỏ sót.
-const SURFACE_PROMPT = PROMPT +
-  "\n\n[CHỈ VẬT LIỆU BỀ MẶT] Ở lượt này CHỈ liệt kê VẬT LIỆU BỀ MẶT / HOÀN THIỆN ốp cố định: " +
-  "sàn (gỗ/đá/gạch), ốp tường (gỗ/đá/lam/giấy dán/sơn hiệu ứng), trần & mảng đèn hắt, " +
-  "rèm/màn, sơn tường, đá/gạch ốp, kính/vách, nẹp/phào. " +
-  "TUYỆT ĐỐI KHÔNG liệt kê đồ nội thất rời, đèn trang trí, thiết bị, gương, thảm rời, vật trang trí " +
-  "(những thứ đó đã xử lý ở lượt khác). Vẫn cho boxes theo hướng dẫn: mỗi dòng 1 box vùng ĐẠI DIỆN của mảng bề mặt đó. " +
-  "KHÔNG in header, KHÔNG markdown, KHÔNG giải thích.";
+// Prompt cho PASS BỀ MẶT — ĐỘC LẬP (KHÔNG kế thừa PROMPT), chỉ lấy vật liệu bề mặt/hoàn thiện.
+// Đồ rời (nội thất/đèn/thiết bị/gương/thảm) đã do tầng detect Gemini + đọc crop lo -> ở đây CẤM liệt kê
+// để tránh TRÙNG LẶP và để model tập trung đúng phần bề mặt mà detector hay bỏ sót.
+const SURFACE_PROMPT =
+`Bạn là chuyên gia bóc tách VẬT LIỆU BỀ MẶT / HOÀN THIỆN từ ảnh phối cảnh (render) nội thất, phục vụ báo giá.
+CHỈ liệt kê các LỚP HOÀN THIỆN CỐ ĐỊNH gắn với sàn – tường – trần – cửa:
+- Sàn: gỗ (WF), gạch (TL), đá (ST)
+- Tường: ốp gỗ/lam (WD), veneer (VN), laminate (LM), MFC (MF), giấy dán tường (WP), sơn (PT), sơn hiệu ứng (PE), đá ốp (ST), kính/gương ốp mảng (GL)
+- Trần: sơn/tấm trần, mảng đèn hắt (đặc điểm trần)
+- Rèm/màn: rèm vải (CT), màn sáo (BL)
+- Nẹp/phào (MD); vách kính/lan can kính (GL)
+
+TUYỆT ĐỐI KHÔNG liệt kê đồ NỘI THẤT RỜI (giường, ghế, sofa, tủ, bàn, ottoman, kệ...), ĐÈN trang trí, THIẾT BỊ, GƯƠNG soi rời, THẢM rời, cây/chậu, vật trang trí. Những thứ đó đã xử lý ở lượt khác — nếu liệt kê sẽ gây TRÙNG LẶP. Nếu ảnh không có mảng bề mặt nào rõ thì trả về rỗng.
+
+CHỈ trả về các dòng phân tách bằng "|" — KHÔNG header, KHÔNG markdown, KHÔNG giải thích. Mỗi dòng gồm 9 cột theo đúng thứ tự:
+ma|nhom|mon|vat_lieu_finish|so_luong|vi_tri|do_tin_cay|ghi_chu|boxes
+- ma: tiền tố mã theo loại bề mặt (WF, TL, ST, WD, VN, LM, MF, WP, PT, PE, GL, SF, CT, BL, MD).
+- nhom: LUÔN ghi đúng "Vật liệu bề mặt".
+- mon: tên mảng bề mặt ngắn gọn (vd "Sàn gỗ", "Ốp tường lam gỗ", "Rèm cửa", "Trần thạch cao", "Sơn tường").
+- vat_lieu_finish: mô tả vật liệu/màu/vân ngắn gọn.
+- so_luong: 1.
+- vi_tri: khu vực (vd "Sàn phòng ngủ", "Tường đầu giường", "Cửa sổ").
+- do_tin_cay: Cao / Trung bình / Thấp.
+- ghi_chu: ngắn gọn hoặc để trống.
+- boxes: 1 box "x1,y1,x2,y2" (0..1; (x1,y1) trên-trái, (x2,y2) dưới-phải) của 1 vùng ĐẠI DIỆN cho mảng bề mặt đó.`;
 
 let _uid = 0;
 const nextId = () => (_uid += 1);
