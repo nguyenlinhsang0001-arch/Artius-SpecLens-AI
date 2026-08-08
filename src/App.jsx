@@ -338,6 +338,40 @@ function mergeRows(items, getPrefix) {
   return out;
 }
 
+// Gộp trùng TRONG CÙNG 1 ẢNH: khác mergeRows ở chỗ CỘNG DỒN so_luong (không lấy MAX).
+// Lý do: nếu tầng C lỡ cho ra 2 dòng cùng mô tả trong 1 ảnh (vd 2 cụm ghế bị mô tả y hệt),
+// đó là 2 cụm vật THẬT nên số lượng phải cộng lại. Còn xuyên-ảnh vẫn để mergeRows lấy MAX
+// (tránh cộng dồn khi cùng cụm vật xuất hiện lại ở ảnh khác). Chạy TRƯỚC mergeRows, trên
+// đúng các item vừa bóc từ 1 ảnh (nên toàn bộ đều same-image).
+function mergeSameImage(items) {
+  const map = new Map(), out = [];
+  const rank = { "Cao": 3, "Trung bình": 2, "Thấp": 1 };
+  for (const it of items) {
+    const pfx = String(it.prefix || "").toUpperCase().replace(/[^A-Z]/g, "");
+    if (!pfx || !VALID_PREFIX.has(pfx)) { out.push(it); continue; }
+    const key = mergeKey(pfx, it.mon, it.vat_lieu);
+    if (!map.has(key)) {
+      const base = { ...it, instances: [...(it.instances || [])], memberBoxes: [...(it.memberBoxes || [])] };
+      map.set(key, base); out.push(base);
+    } else {
+      const base = map.get(key);
+      const s1 = parseInt(base.soLuong, 10), s2 = parseInt(it.soLuong, 10);
+      const n1 = Number.isFinite(s1) ? s1 : 1, n2 = Number.isFinite(s2) ? s2 : 1;
+      // Chỉ CỘNG DỒN cho cụm đồ rời đã qua clustering (có memberBoxes) — số lượng là ĐẾM được.
+      // Vật liệu bề mặt (không memberBoxes) tính theo m², không đếm -> giữ MAX như cũ.
+      const countable = (base.memberBoxes && base.memberBoxes.length) || (it.memberBoxes && it.memberBoxes.length);
+      base.soLuong = countable ? (n1 + n2) : Math.max(n1, n2);
+      if ((!base.instances || !base.instances.length) && it.instances && it.instances.length) base.instances = [it.instances[0]];
+      if (it.memberBoxes && it.memberBoxes.length) base.memberBoxes = [...(base.memberBoxes || []), ...it.memberBoxes];
+      const locs = new Set(splitLocs(base.vi_tri)); splitLocs(it.vi_tri).forEach((s) => locs.add(s)); base.vi_tri = Array.from(locs).join(", ");
+      const note = String(it.ghi_chu || "").trim();
+      if (note && String(base.ghi_chu || "").indexOf(note) < 0) base.ghi_chu = [base.ghi_chu, note].filter(Boolean).join("; ");
+      if ((rank[it.do_tin_cay] || 0) > (rank[base.do_tin_cay] || 0)) base.do_tin_cay = it.do_tin_cay;
+    }
+  }
+  return out;
+}
+
 // Sắp xếp bảng theo MÃ vật liệu: A→Z, phần số theo thứ tự tự nhiên (D-02 trước D-10).
 // Tên sheet (nhóm) của một dòng — dùng cho tab sheet trong bảng, khớp với lúc export Excel.
 const rowSheet = (r) => sheetCategory((r.ma || "").split("-")[0] || r.prefix || "");
@@ -390,6 +424,96 @@ function makeExportCrop(imgEl, box, maxPx = 440) {
 
 // Bỏ tiền tố "data:image/...;base64," -> chỉ còn base64 (để gửi cho API).
 function b64of(dataUrl) { const i = String(dataUrl || "").indexOf(","); return i >= 0 ? dataUrl.slice(i + 1) : dataUrl; }
+
+/* ===================== TẦNG C: gom nhóm bằng thị giác (montage clustering) =====================
+   Bài toán: Gemini (B) khoanh TỪNG cá thể -> nhiều ghế giống nhau ra nhiều box. Nếu đọc mỗi crop
+   ĐỘC LẬP thì Claude mô tả lệch nhau ("Ghế armchair" vs "Armchair (ghế bành đơn)") -> không gộp được.
+   Cách xử lý: ghép mọi crop thành 1 ẢNH LƯỚI đánh số rồi hỏi Claude "ô nào là CÙNG 1 sản phẩm?".
+   So sánh cạnh nhau nên phân biệt được "cùng mẫu khác ánh sáng" vs "hai mẫu khác nhau" — điều mà
+   string-matching và cả Gemini đều làm dở. Sau đó mỗi nhóm CHỈ đọc 1 cá thể đại diện (full-res). */
+
+// Ghép các vùng (regions) thành 1 canvas lưới, mỗi ô là crop của 1 vật + số thứ tự (1..n) góc trên-trái.
+function buildMontage(imgEl, regions, cell = 240, pad = 8, maxEdge = 2200) {
+  try {
+    const n = regions.length;
+    if (!n || !imgEl || !imgEl.naturalWidth) return null;
+    const cols = Math.ceil(Math.sqrt(n));
+    const rows = Math.ceil(n / cols);
+    let cW = cell, cH = cell;
+    let W = cols * cW + (cols + 1) * pad, H = rows * cH + (rows + 1) * pad;
+    const sc = Math.min(1, maxEdge / Math.max(W, H)); // co lại nếu lưới quá lớn
+    if (sc < 1) { cW = Math.max(120, Math.floor(cW * sc)); cH = cW; W = cols * cW + (cols + 1) * pad; H = rows * cH + (rows + 1) * pad; }
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#0d1119"; ctx.fillRect(0, 0, W, H);
+    const nw = imgEl.naturalWidth, nh = imgEl.naturalHeight;
+    for (let i = 0; i < n; i++) {
+      const r = regions[i];
+      const col = i % cols, row = Math.floor(i / cols);
+      const x = pad + col * (cW + pad), y = pad + row * (cH + pad);
+      let sx = r.x1 * nw, sy = r.y1 * nh, sw = Math.max(4, (r.x2 - r.x1) * nw), sh = Math.max(4, (r.y2 - r.y1) * nh);
+      const padX = sw * 0.08, padY = sh * 0.08;
+      sx = Math.max(0, sx - padX); sy = Math.max(0, sy - padY);
+      sw = Math.min(nw - sx, sw + 2 * padX); sh = Math.min(nh - sy, sh + 2 * padY);
+      const scale = Math.min(cW / sw, cH / sh), dw = sw * scale, dh = sh * scale;
+      ctx.fillStyle = "#0d1119"; ctx.fillRect(x, y, cW, cH);
+      ctx.drawImage(imgEl, sx, sy, sw, sh, x + (cW - dw) / 2, y + (cH - dh) / 2, dw, dh);
+      const label = String(i + 1);
+      ctx.font = "bold 18px sans-serif";
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = "rgba(0,0,0,0.78)"; ctx.fillRect(x + 3, y + 3, tw + 12, 24);
+      ctx.fillStyle = "#fff"; ctx.textBaseline = "top"; ctx.fillText(label, x + 9, y + 6);
+      ctx.strokeStyle = "rgba(255,255,255,0.16)"; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, cW - 1, cH - 1);
+    }
+    return c.toDataURL("image/jpeg", 0.85);
+  } catch (e) { return null; }
+}
+
+// Parse JSON nhóm từ text model trả về. An toàn: số nào thiếu -> TÁCH thành nhóm riêng (thà tách còn hơn gộp nhầm).
+function parseGroups(text, n) {
+  let s = String(text || "").replace(/```json/gi, "").replace(/```/g, "").trim();
+  const i = s.indexOf("{"), j = s.lastIndexOf("}");
+  if (i >= 0 && j > i) s = s.slice(i, j + 1);
+  let obj; try { obj = JSON.parse(s); } catch { return null; }
+  const groups = obj && Array.isArray(obj.groups) ? obj.groups : null;
+  if (!groups) return null;
+  const out = [], seen = new Set();
+  for (const g of groups) {
+    const mem = (g && Array.isArray(g.members) ? g.members : [])
+      .map((x) => parseInt(x, 10)).filter((x) => x >= 1 && x <= n && !seen.has(x));
+    mem.forEach((x) => seen.add(x));
+    if (mem.length) out.push({ members: mem, loai: String((g && g.loai) || "").trim(), nhom: String((g && g.nhom) || "").trim() });
+  }
+  for (let k = 1; k <= n; k++) if (!seen.has(k)) { out.push({ members: [k], loai: "", nhom: "" }); seen.add(k); }
+  return out.length ? out : null;
+}
+
+// Gọi Claude 1 lần với ảnh montage -> danh sách nhóm [{members:[1based..], loai, nhom}].
+async function clusterRegions(montageB64, n) {
+  const prompt =
+`Ảnh kèm theo là 1 lưới (contact sheet) gồm ${n} ô, mỗi ô đánh SỐ ở góc trên-trái (1..${n}). Mỗi ô là ảnh cắt của MỘT vật thể trong CÙNG một ảnh nội thất.
+Nhiệm vụ: gom những ô là CÙNG MỘT sản phẩm (cùng kiểu dáng/thiết kế/chất liệu; bỏ qua khác biệt nhỏ do góc nhìn, khoảng cách hay ánh sáng) vào chung 1 nhóm. Hai vật KHÁC kiểu dáng phải ở 2 nhóm khác nhau. Mỗi ô thuộc ĐÚNG 1 nhóm; mọi số 1..${n} xuất hiện đúng một lần.
+CHỈ trả về JSON (không markdown, không giải thích), dạng:
+{"groups":[{"members":[1,3,5],"loai":"ghế armchair","nhom":"Nội thất"},{"members":[2],"loai":"bàn trà tròn","nhom":"Nội thất"}]}
+"nhom" chọn 1 trong ["Nội thất","Đèn","Vật liệu bề mặt","Cửa & Vách kính","Hardware","Trang trí"]. "loai" là tên loại ngắn gọn tiếng Việt.`;
+  try {
+    const res = await fetch("/api/analyze", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6", max_tokens: 1200,
+        messages: [{ role: "user", content: [
+          { type: "image", source: { type: "base64", media_type: "image/jpeg", data: montageB64 } },
+          { type: "text", text: prompt },
+        ] }],
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && data.type === "error") return null;
+    const textOut = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
+    return parseGroups(textOut, n);
+  } catch (e) { return null; }
+}
 
 // map có giới hạn số lời gọi song song (tránh dội rate-limit khi đọc nhiều crop cùng lúc).
 async function mapLimit(arr, limit, fn) {
@@ -1151,23 +1275,43 @@ function InventoryExtractor() {
     const el = getEl(imgId);
     try {
       if (el && el.naturalWidth) {
-        const regions = await detectRegionsApi(pic);
+        const regions = await detectRegionsApi(pic);   // B: Gemini khoanh TỪNG cá thể (không tự gộp)
         if (regions.length) {
-          // Chạy SONG SONG: (a) đọc crop từng đồ rời do Gemini khoanh; (b) pass bề mặt toàn ảnh.
+          // TẦNG C: gom nhóm bằng thị giác. Ghép mọi crop -> montage -> hỏi Claude "ô nào cùng 1 sản phẩm".
+          // Với >=2 vùng mới cần gom; 1 vùng thì khỏi. Cluster lỗi -> fallback mỗi vùng 1 nhóm (như cũ).
+          let groups = null;
+          if (regions.length >= 2) {
+            const montage = buildMontage(el, regions, 240);
+            if (montage) groups = await clusterRegions(b64of(montage), regions.length);
+          }
+          if (!groups) groups = regions.map((_, i) => ({ members: [i + 1], loai: "", nhom: "" }));
+
+          // Chạy SONG SONG: (a) mỗi NHÓM đọc 1 cá thể ĐẠI DIỆN (full-res); (b) pass bề mặt toàn ảnh.
           const [read, surfaceItems] = await Promise.all([
-            mapLimit(regions, 4, async (rg) => {
+            mapLimit(groups, 4, async (g) => {
+              const idxs = (g.members || []).map((m) => m - 1).filter((i) => i >= 0 && i < regions.length);
+              if (!idxs.length) return null;
+              // đại diện = cá thể có box LỚN NHẤT (thường rõ nhất, ít bị che)
+              let repI = idxs[0], repA = _boxArea(regions[repI]);
+              for (const i of idxs) { const a = _boxArea(regions[i]); if (a > repA) { repA = a; repI = i; } }
+              const rg = regions[repI];
               const crop = makeExportCrop(el, rg, 1000);
               if (!crop || !crop.data) return null;
-              const one = await readCrop(b64of(crop.data), rg.label);   // truyền nhãn Gemini để phân nhóm đúng
+              const one = await readCrop(b64of(crop.data), g.loai || rg.label);   // hint = loại do C gom được
               if (!one) return null;
-              one.instances = [{ x1: rg.x1, y1: rg.y1, x2: rg.x2, y2: rg.y2 }];   // gắn box từ Gemini
-              if (rg.count && (one.soLuong == null || one.soLuong === "")) one.soLuong = rg.count; // SL do Gemini đếm
+              one.instances = [{ x1: rg.x1, y1: rg.y1, x2: rg.x2, y2: rg.y2 }];    // 1 ký hiệu = cá thể đại diện
+              // so_luong = tổng count các thành viên trong nhóm (mỗi cá thể count=1 -> = số thành viên).
+              // Bền với cả trường hợp B lỡ gộp (1 box count=k): vẫn cộng đúng.
+              one.soLuong = idxs.reduce((s, i) => s + (Number.isInteger(regions[i].count) && regions[i].count > 0 ? regions[i].count : 1), 0);
+              if (g.nhom && !one.nhom) one.nhom = g.nhom;
+              // lưu box mọi thành viên (không hiển thị marker) — để dành cho việc tách nhóm / xuất sau này
+              one.memberBoxes = idxs.map((i) => ({ x1: regions[i].x1, y1: regions[i].y1, x2: regions[i].x2, y2: regions[i].y2 }));
               return one;
             }),
             readSurfaces(pic).catch(() => []),
           ]);
-          const objectItems = dedupeObjects(read.filter(Boolean));   // gộp box trùng cùng 1 vật (vd giường bị khoanh nhiều lần)
-          const combined = [...objectItems, ...surfaceItems];   // đồ rời (Gemini) + bề mặt (Claude toàn ảnh)
+          const objectItems = dedupeObjects(read.filter(Boolean));   // an toàn: gộp nốt nếu 2 đại diện lỡ chồng box
+          const combined = [...objectItems, ...surfaceItems];   // đồ rời (đã gom nhóm) + bề mặt (Claude toàn ảnh)
           if (combined.length) return combined;
         }
       }
@@ -1186,6 +1330,7 @@ function InventoryExtractor() {
     setImages((prev) => prev.map((x) => (x.id === imgId ? { ...x, status: "analyzing", err: "" } : x)));
     try {
       let items = await callAnalyze(imgId);
+      items = mergeSameImage(items);   // C: gộp trùng TRONG cùng ảnh, CỘNG DỒN số lượng (trước khi gộp xuyên ảnh lấy MAX)
       items = items.map((it) => ({ ...it, srcImg: imgId, instances: (it.instances || []).map((b) => ({ ...b, imgId })) }));
       setRows((prev) => {
         const stripped = stripImageInstances(prev, imgId);        // idempotent nếu phân tích lại cùng ảnh
