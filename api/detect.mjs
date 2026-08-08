@@ -31,6 +31,7 @@ const DEFAULT_PROMPT =
   "Return ONE box PER physical instance. Do NOT merge repeated identical items into a single box: " +
   "if there are 6 identical chairs, return 6 separate boxes, one tightly on each chair. " +
   "Do NOT box diffuse surface finishes (paint, stone slab areas, tiles, wallpaper). " +
+  "Do NOT box any of these (ignore them completely): people/persons/staff, computer monitors or screens, desktop computers, laptops, keyboards, and books. " +
   "Never return masks. Limit to 40 objects. " +
   "Return a JSON array; each item has box_2d as [y_min, x_min, y_max, x_max] normalized 0-1000, " +
   "a short English label, and count = 1 for a single instance (only > 1 if this ONE box genuinely covers several identical items you could not separate).";
