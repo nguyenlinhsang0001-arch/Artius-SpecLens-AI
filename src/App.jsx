@@ -129,6 +129,8 @@ QUY TẮC ĐẾM:
 - Vật liệu bề mặt / chi tiết dạng đường: 1 box đại diện (không dùng để đếm).
 - Không bịa. Không dùng "|" hay ";" trong chữ.
 
+KHÔNG BÓC (bỏ qua hoàn toàn, không tạo dòng): người/nhân viên/lễ tân (là người), màn hình & máy tính, laptop, bàn phím, và sách. (Lưu ý: quầy lễ tân, kệ/tủ sách vẫn là nội thất — vẫn bóc.)
+
 Ví dụ dòng:
 PT|Vật liệu bề mặt|Sơn đen mờ|Tường|Vách tivi|Cao||0.05,0.10,0.40,0.85
 MT|Vật liệu bề mặt|Nẹp đồng|Nẹp dọc trang trí|Vách tivi|Trung bình|Theo m dài|0.44,0.20,0.46,0.70
@@ -149,7 +151,8 @@ const CROP_PROMPT = PROMPT +
   "- Phụ kiện TRANG TRÍ / bày biện: gối tựa & gối trang trí, khay, bình/lọ/chậu, giỏ/rổ, tranh, đồng hồ để bàn, sách bày, nến, tượng, cây & chậu cây, vật trang trí nhỏ -> nhom = \"Trang trí\" (TUYỆT ĐỐI KHÔNG xếp các thứ này vào \"Nội thất\").\n" +
   "- Đồ NỘI THẤT chức năng: giường, ghế, sofa, tủ, kệ, bàn, táp đầu giường, đôn -> \"Nội thất\".\n" +
   "- Đèn / thiết bị chiếu sáng -> \"Đèn\".\n" +
-  "Nếu có dòng 'Gợi ý loại vật' bên dưới, hãy dùng nó để xác định đúng vật và đúng nhóm.";
+  "Nếu có dòng 'Gợi ý loại vật' bên dưới, hãy dùng nó để xác định đúng vật và đúng nhóm.\n" +
+  "KHÔNG BÓC (nếu crop là các thứ này thì trả về RỖNG, không in dòng nào): người/nhân viên, màn hình/máy tính, laptop, bàn phím, sách.";
 
 // Prompt cho PASS BỀ MẶT — ĐỘC LẬP (KHÔNG kế thừa PROMPT), chỉ lấy vật liệu bề mặt/hoàn thiện.
 // Đồ rời (nội thất/đèn/thiết bị/gương/thảm) đã do tầng detect Gemini + đọc crop lo -> ở đây CẤM liệt kê
@@ -196,6 +199,44 @@ function mergeKey(pfx, mon, vat_lieu) {
 }
 // Tách chuỗi vị trí thành các phần rời (loại trùng) khi gộp dòng.
 const splitLocs = (s) => String(s || "").split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+
+// Ép độ tin cậy về ĐÚNG 3 trạng thái. Mọi giá trị lạ (do lệch cột / model trả bậy) -> "Trung bình".
+function normTinCay(v) {
+  const s = stripVN(v || "").trim();
+  if (!s) return "Trung bình";
+  if (s.includes("cao")) return "Cao";
+  if (s.includes("thap")) return "Thấp";
+  if (s.includes("trung")) return "Trung bình";
+  return "Trung bình";
+}
+
+// --- Loại trừ vật thể KHÔNG bóc tách: người, màn hình/máy tính, laptop, sách ---
+// Nhãn tiếng Anh do Gemini gán (mạnh nhất, chặn TRƯỚC khi crop).
+const EXCLUDE_LABELS_EN = [
+  "person", "people", "human", "man", "woman", "boy", "girl", "child", "kid",
+  "staff", "worker", "employee", "receptionist", "guest", "figure", "silhouette",
+  "monitor", "computer monitor", "computer", "desktop", "desktop computer", "pc", "imac",
+  "laptop", "notebook computer", "keyboard",
+  "book", "books",
+];
+function labelExcluded(label) {
+  const s = " " + stripVN(label).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim() + " ";
+  return EXCLUDE_LABELS_EN.some((w) => s.includes(" " + w + " "));
+}
+// Lưới an toàn theo TÊN món tiếng Việt (phòng khi lọt qua nhãn Gemini). Có chốt chặn để KHÔNG
+// nhầm sang nội thất hợp lệ: "quầy lễ tân", "kệ sách", "tủ sách"… vẫn được giữ.
+function monExcluded(mon) {
+  const t = " " + normTokens(mon) + " "; // token đã bỏ dấu + sort
+  const has = (w) => t.includes(" " + w + " ");
+  const furn = has("quay") || has("ban") || has("ghe") || has("tu") || has("ke") || has("gia") || has("vach") || has("giuong");
+  // người / nhân viên / lễ tân (là người, không phải quầy)
+  if ((has("nguoi") || has("nhanvien") || (has("nhan") && has("vien")) || (has("le") && has("tan"))) && !furn) return true;
+  // màn hình / máy tính / laptop / bàn phím
+  if ((has("man") && has("hinh")) || (has("may") && has("tinh")) || has("laptop") || (has("ban") && has("phim"))) return true;
+  // sách (không phải kệ/tủ/giá sách)
+  if (has("sach") && !furn) return true;
+  return false;
+}
 
 // --- Khử trùng ĐỒ RỜI trong CÙNG 1 ẢNH (khi Gemini khoanh nhiều box cho cùng 1 vật) ---
 function _boxInter(a, b) {
@@ -276,7 +317,7 @@ function parseItems(text) {
     const vat_lieu = (parts[3] || "").trim();
     const soLuongRaw = (parts[4] || "").trim();
     const vi_tri = (parts[5] || "").trim();
-    const do_tin_cay = (parts[6] || "").trim() || "Trung bình";
+    const do_tin_cay = normTinCay(parts[6]);
     const ghi_chu = (parts[7] || "").trim();
     const boxStr = parts.slice(8).join("|").trim();
     if (!mon && !nhom) continue;
@@ -671,13 +712,13 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 .marker { position:absolute; transform:translate(-50%,-50%); min-width:24px; height:24px; padding:0 6px; border-radius:12px; background:rgba(255,255,255,0.10); color:#fff;
   font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid rgba(255,255,255,0.35); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:pointer; line-height:1; touch-action:none; opacity:.75; }
 .marker.dim { opacity:.42; } .marker.active { background:rgba(255,255,255,0.12); color:#fff; border:1.5px solid rgba(127,216,171,0.5); transform:translate(-50%,-50%) scale(1.15); z-index:6; opacity:1; box-shadow:0 2px 8px rgba(0,0,0,.5); }
-.marker.active::before { content:""; position:absolute; inset:-4px; border-radius:999px; pointer-events:none; padding:2.5px;
+.marker.active::before, .marker.hl::before { content:""; position:absolute; inset:-4px; border-radius:999px; pointer-events:none; padding:2.5px;
   background:conic-gradient(from 0deg, rgba(127,216,171,0) 0deg, rgba(127,216,171,0.12) 140deg, #7fd8ab 275deg, #d8ffe9 330deg, #7fd8ab 360deg);
   -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor;
   mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite:exclude;
   animation:mk-ring-spin 1.15s linear infinite; }
 @keyframes mk-ring-spin { to { transform:rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .marker.active::before { animation:none; background:#7fd8ab; } }
+@media (prefers-reduced-motion: reduce) { .marker.active::before, .marker.hl::before { animation:none; background:#7fd8ab; } }
 .marker.cropping { cursor:grab; background:rgba(255,255,255,0.14); color:#fff; border-color:rgba(255,255,255,0.6); opacity:.72; transform:translate(-50%,-50%);
   box-shadow:0 0 0 2px rgba(157,192,230,0.55), 0 2px 8px rgba(0,0,0,.45); z-index:7; }
 .marker.cropping:active { cursor:grabbing; }
@@ -1151,15 +1192,20 @@ function InventoryExtractor() {
 
   // Chọn 1 dòng trong bảng. Nếu có >1 ảnh và ảnh đang xem KHÔNG chứa ký hiệu của dòng này,
   // tự chuyển sang ảnh phối cảnh đầu tiên có ký hiệu của dòng đó.
+  // Yêu cầu mới: bấm vào dòng -> VÀO LUÔN trạng thái crop ảnh của dòng đó (nếu dòng đã có ký hiệu).
   function selectRow(r) {
     setActiveId(r.id);
-    if (images.length > 1 && r.instances && r.instances.length) {
-      const imgIds = r.instances.map((b) => b.imgId);
+    setMarkerEdit(false); // crop unlock chỉ chạy khi KHÔNG ở chế độ Thêm ký hiệu
+    const insts = r.instances || [];
+    if (images.length > 1 && insts.length) {
+      const imgIds = insts.map((b) => b.imgId);
       if (imgIds.indexOf(activeImgId) < 0) {
         const target = imgIds.find((id) => images.some((im) => im.id === id));
-        if (target != null && target !== activeImgId) { setActiveImgId(target); setMarkerEdit(false); setCropRowId(null); }
+        if (target != null && target !== activeImgId) setActiveImgId(target);
       }
     }
+    // Vào chế độ crop cho dòng vừa bấm (chỉ khi dòng có ít nhất 1 ký hiệu để crop).
+    setCropRowId(insts.length ? r.id : null);
   }
 
   // Gỡ 1 ảnh: xóa khỏi danh sách, gỡ box của nó khỏi bảng rồi gộp + đánh mã lại.
@@ -1212,7 +1258,7 @@ function InventoryExtractor() {
     const data = await res.json();
     if (data && data.type === "error") throw new Error(data.error ? data.error.message : "API trả về lỗi.");
     const textOut = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
-    return parseItems(textOut);
+    return parseItems(textOut).filter((it) => !monExcluded(it.mon));
   }
 
   // TẦNG 1 (grounding): gọi /api/detect (Gemini) -> danh sách vùng {label,count,x1,y1,x2,y2} trong [0..1].
@@ -1275,7 +1321,8 @@ function InventoryExtractor() {
     const el = getEl(imgId);
     try {
       if (el && el.naturalWidth) {
-        const regions = await detectRegionsApi(pic);   // B: Gemini khoanh TỪNG cá thể (không tự gộp)
+        // B: Gemini khoanh TỪNG cá thể; loại NGAY người/màn hình/máy tính/laptop/sách theo nhãn (trước khi crop).
+        const regions = (await detectRegionsApi(pic)).filter((r) => !labelExcluded(r.label));
         if (regions.length) {
           // TẦNG C: gom nhóm bằng thị giác. Ghép mọi crop -> montage -> hỏi Claude "ô nào cùng 1 sản phẩm".
           // Với >=2 vùng mới cần gom; 1 vùng thì khỏi. Cluster lỗi -> fallback mỗi vùng 1 nhóm (như cũ).
@@ -1311,7 +1358,8 @@ function InventoryExtractor() {
             readSurfaces(pic).catch(() => []),
           ]);
           const objectItems = dedupeObjects(read.filter(Boolean));   // an toàn: gộp nốt nếu 2 đại diện lỡ chồng box
-          const combined = [...objectItems, ...surfaceItems];   // đồ rời (đã gom nhóm) + bề mặt (Claude toàn ảnh)
+          // Lưới an toàn: bỏ nốt dòng bị loại trừ nếu lọt qua nhãn Gemini (vd Claude đặt tên "Người"/"Màn hình máy tính").
+          const combined = [...objectItems, ...surfaceItems].filter((it) => !monExcluded(it.mon));
           if (combined.length) return combined;
         }
       }
@@ -2064,8 +2112,8 @@ function InventoryExtractor() {
                           value={r.soLuong != null ? r.soLuong : (r.instances.length || "")}
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) => updateRow(r.id, "soLuong", e.target.value)} />
-                        <select className="grp-select" aria-label="Độ tin cậy" value={r.do_tin_cay} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "do_tin_cay", e.target.value)}>
-                          {(r.do_tin_cay && !TINCAY_OPTS.includes(r.do_tin_cay) ? [r.do_tin_cay, ...TINCAY_OPTS] : TINCAY_OPTS).map((o) => <option key={o} value={o}>{o}</option>)}
+                        <select className="grp-select" aria-label="Độ tin cậy" value={TINCAY_OPTS.includes(r.do_tin_cay) ? r.do_tin_cay : "Trung bình"} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "do_tin_cay", e.target.value)}>
+                          {TINCAY_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
                         </select>
                         <button className="icon-danger" aria-label="Xóa dòng" onClick={(e) => { e.stopPropagation(); deleteRow(r.id); }}><Trash2 size={14} /></button>
                       </div>
