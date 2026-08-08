@@ -145,6 +145,17 @@ const CROP_PROMPT = PROMPT +
   "Cột boxes để TRỐNG (hệ thống đã có toạ độ). so_luong=1 (trừ khi trong chính crop này thấy rõ nhiều bản y hệt). " +
   "KHÔNG in header, KHÔNG markdown, KHÔNG giải thích.";
 
+// Prompt cho PASS BỀ MẶT (đọc toàn ảnh, CHỈ lấy vật liệu bề mặt/hoàn thiện).
+// Đồ rời (nội thất/đèn/thiết bị) đã do tầng detect Gemini + đọc crop lo -> ở đây BỎ QUA
+// để tránh trùng và tập trung vào phần detector hay bỏ sót.
+const SURFACE_PROMPT = PROMPT +
+  "\n\n[CHỈ VẬT LIỆU BỀ MẶT] Ở lượt này CHỈ liệt kê VẬT LIỆU BỀ MẶT / HOÀN THIỆN ốp cố định: " +
+  "sàn (gỗ/đá/gạch), ốp tường (gỗ/đá/lam/giấy dán/sơn hiệu ứng), trần & mảng đèn hắt, " +
+  "rèm/màn, sơn tường, đá/gạch ốp, kính/vách, nẹp/phào. " +
+  "TUYỆT ĐỐI KHÔNG liệt kê đồ nội thất rời, đèn trang trí, thiết bị, gương, thảm rời, vật trang trí " +
+  "(những thứ đó đã xử lý ở lượt khác). Vẫn cho boxes theo hướng dẫn: mỗi dòng 1 box vùng ĐẠI DIỆN của mảng bề mặt đó. " +
+  "KHÔNG in header, KHÔNG markdown, KHÔNG giải thích.";
+
 let _uid = 0;
 const nextId = () => (_uid += 1);
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -1053,7 +1064,26 @@ function InventoryExtractor() {
     return items[0] || null;
   }
 
-  // Two-stage: detect (Gemini) -> crop hi-res -> read (Claude) từng vùng.
+  // PASS BỀ MẶT: đọc TOÀN ẢNH, chỉ lấy vật liệu bề mặt/hoàn thiện (sàn/tường/trần/rèm/sơn/đá ốp...).
+  async function readSurfaces(pic) {
+    const res = await fetch("/api/analyze", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6", max_tokens: 1000,
+        messages: [{ role: "user", content: [
+          { type: "image", source: { type: "base64", media_type: pic.media_type, data: pic.data } },
+          { type: "text", text: SURFACE_PROMPT },
+        ] }],
+      }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (data && data.type === "error") return [];
+    const textOut = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
+    return parseItems(textOut);
+  }
+
+  // Two-stage: detect (Gemini) -> crop hi-res -> read (Claude) từng vùng, ĐỒNG THỜI đọc pass bề mặt.
   // Nếu /api/detect lỗi hoặc không có vùng nào -> FALLBACK về callAnalyzeSingle (Claude đọc cả ảnh).
   async function callAnalyze(imgId) {
     const pic = apiImageFor(imgId);
@@ -1063,18 +1093,22 @@ function InventoryExtractor() {
       if (el && el.naturalWidth) {
         const regions = await detectRegionsApi(pic);
         if (regions.length) {
-          // đọc tối đa 4 crop song song để không dội rate-limit
-          const read = await mapLimit(regions, 4, async (rg) => {
-            const crop = makeExportCrop(el, rg, 1000);
-            if (!crop || !crop.data) return null;
-            const one = await readCrop(b64of(crop.data));
-            if (!one) return null;
-            one.instances = [{ x1: rg.x1, y1: rg.y1, x2: rg.x2, y2: rg.y2 }];   // gắn box từ Gemini
-            if (rg.count && (one.soLuong == null || one.soLuong === "")) one.soLuong = rg.count; // SL do Gemini đếm
-            return one;
-          });
-          const clean = read.filter(Boolean);
-          if (clean.length) return clean;
+          // Chạy SONG SONG: (a) đọc crop từng đồ rời do Gemini khoanh; (b) pass bề mặt toàn ảnh.
+          const [read, surfaceItems] = await Promise.all([
+            mapLimit(regions, 4, async (rg) => {
+              const crop = makeExportCrop(el, rg, 1000);
+              if (!crop || !crop.data) return null;
+              const one = await readCrop(b64of(crop.data));
+              if (!one) return null;
+              one.instances = [{ x1: rg.x1, y1: rg.y1, x2: rg.x2, y2: rg.y2 }];   // gắn box từ Gemini
+              if (rg.count && (one.soLuong == null || one.soLuong === "")) one.soLuong = rg.count; // SL do Gemini đếm
+              return one;
+            }),
+            readSurfaces(pic).catch(() => []),
+          ]);
+          const objectItems = read.filter(Boolean);
+          const combined = [...objectItems, ...surfaceItems];   // đồ rời (Gemini) + bề mặt (Claude toàn ảnh)
+          if (combined.length) return combined;
         }
       }
     } catch (e) {
