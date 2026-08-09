@@ -28,9 +28,11 @@ const MODEL = process.env.GEMINI_DETECT_MODEL || "gemini-3.6-flash"; // TODO: xÃ
 const DEFAULT_PROMPT =
   "Detect the 2D bounding box of EACH individual visible movable/fixed furniture item, " +
   "lighting fixture, sanitary fixture, door/window, and decor object in this interior render. " +
+  "Be thorough with LIGHTING â€” include every distinct fixture: pendant/hanging lamps, ceiling spots/downlights, " +
+  "wall sconces, wall-mounted reading lamps, bedside/table lamps, floor lamps, and picture lights. " +
   "Return ONE box PER physical instance. Do NOT merge repeated identical items into a single box: " +
   "if there are 6 identical chairs, return 6 separate boxes, one tightly on each chair. " +
-  "Do NOT box diffuse surface finishes (paint, stone slab areas, tiles, wallpaper). " +
+  "Do NOT box diffuse surface finishes (paint, stone slab areas, tiles, wallpaper) NOR flat floor rugs/area rugs/carpets (those are handled as surfaces elsewhere). " +
   "Do NOT box any of these (ignore them completely): people/persons/staff, computer monitors or screens, desktop computers, laptops, keyboards, and books. " +
   "Never return masks. Limit to 40 objects. " +
   "Return a JSON array; each item has box_2d as [y_min, x_min, y_max, x_max] normalized 0-1000, " +
