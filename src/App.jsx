@@ -1,5 +1,5 @@
 /*
-  Inventory Extractor — ARTIUS reskin (v2).
+  Inventory Extractor — ARTIUS reskin (v5).
   FUNCTIONALITY is identical to uploads/inventory-extractor.jsx (v4):
   same parsing, material-code table, marker editing, thumbnails,
   Claude image analysis, Excel/TSV/annotated-image/JSON-bundle export.
@@ -160,19 +160,19 @@ const CROP_PROMPT = PROMPT +
 const SURFACE_PROMPT =
 `Bạn là chuyên gia bóc tách VẬT LIỆU BỀ MẶT / HOÀN THIỆN từ ảnh phối cảnh (render) nội thất, phục vụ báo giá.
 CHỈ liệt kê các LỚP HOÀN THIỆN CỐ ĐỊNH gắn với sàn – tường – trần – cửa:
-- Sàn: gỗ (WF), gạch (TL), đá (ST)
+- Sàn: gỗ (WF), gạch (TL), đá (ST), thảm trải sàn rời (RUG)
 - Tường: ốp gỗ/lam (WD), veneer (VN), laminate (LM), MFC (MF), giấy dán tường (WP), sơn (PT), sơn hiệu ứng (PE), đá ốp (ST), kính/gương ốp mảng (GL)
 - Trần: sơn/tấm trần, mảng đèn hắt (đặc điểm trần)
 - Rèm/màn: rèm vải (CT), màn sáo (BL)
 - Nẹp/phào (MD); vách kính/lan can kính (GL)
 
-TUYỆT ĐỐI KHÔNG liệt kê đồ NỘI THẤT RỜI (giường, ghế, sofa, tủ, bàn, ottoman, kệ...), ĐÈN trang trí, THIẾT BỊ, GƯƠNG soi rời, THẢM rời, cây/chậu, vật trang trí. Những thứ đó đã xử lý ở lượt khác — nếu liệt kê sẽ gây TRÙNG LẶP. Nếu ảnh không có mảng bề mặt nào rõ thì trả về rỗng.
+TUYỆT ĐỐI KHÔNG liệt kê đồ NỘI THẤT RỜI (giường, ghế, sofa, tủ, bàn, ottoman, kệ...), ĐÈN trang trí, THIẾT BỊ, GƯƠNG soi rời, cây/chậu, vật trang trí. Những thứ đó đã xử lý ở lượt khác — nếu liệt kê sẽ gây TRÙNG LẶP. (Ngoại lệ: THẢM trải sàn thì ĐƯỢC liệt kê ở đây với mã RUG.) Nếu ảnh không có mảng bề mặt nào rõ thì trả về rỗng.
 
 CHỈ trả về các dòng phân tách bằng "|" — KHÔNG header, KHÔNG markdown, KHÔNG giải thích. Mỗi dòng gồm 9 cột theo đúng thứ tự:
 ma|nhom|mon|vat_lieu_finish|so_luong|vi_tri|do_tin_cay|ghi_chu|boxes
-- ma: tiền tố mã theo loại bề mặt (WF, TL, ST, WD, VN, LM, MF, WP, PT, PE, GL, SF, CT, BL, MD).
+- ma: tiền tố mã theo loại bề mặt (WF, TL, ST, WD, VN, LM, MF, WP, PT, PE, GL, SF, CT, BL, MD, RUG).
 - nhom: LUÔN ghi đúng "Vật liệu bề mặt".
-- mon: tên mảng bề mặt ngắn gọn (vd "Sàn gỗ", "Ốp tường lam gỗ", "Rèm cửa", "Trần thạch cao", "Sơn tường").
+- mon: tên mảng bề mặt ngắn gọn (vd "Sàn gỗ", "Ốp tường lam gỗ", "Rèm cửa", "Trần thạch cao", "Sơn tường", "Thảm trải sàn").
 - vat_lieu_finish: mô tả vật liệu/màu/vân ngắn gọn.
 - so_luong: 1.
 - vi_tri: khu vực (vd "Sàn phòng ngủ", "Tường đầu giường", "Cửa sổ").
@@ -273,6 +273,23 @@ function dedupeObjects(items) {
     }
   }
   return out.map((it) => { const { _k, ...rest } = it; return rest; });
+}
+
+// Đếm SỐ CÁ THỂ THẬT trong 1 nhóm (cluster) đã gom bằng thị giác.
+// Vấn đề: Gemini hay khoanh MỘT vật lớn thành nhiều box chồng nhau (giường = khung + đầu giường + chăn).
+// Nếu cộng thẳng số box -> đếm dư (giường thành SL 3). Cách xử lý: các box CHỒNG nhau = CÙNG một vật
+// -> gộp làm 1; chỉ box TÁCH RỜI mới tính là cá thể riêng. Trả về [{box(lớn nhất mỗi cụm), count}],
+// đã sort theo diện tích giảm dần (phần tử đầu = box đại diện lớn nhất cả nhóm).
+function spatialInstances(boxes) {
+  const items = (boxes || []).map((b) => ({ box: b, count: (Number.isInteger(b.count) && b.count > 0) ? b.count : 1 }));
+  items.sort((a, b) => _boxArea(b.box) - _boxArea(a.box)); // vật to trước -> làm "mỏ neo" của cụm
+  const groups = [];
+  for (const it of items) {
+    const hit = groups.find((g) => boxesOverlap(g.box, it.box));
+    if (hit) hit.count = Math.max(hit.count, it.count);   // chồng nhau = cùng 1 vật -> KHÔNG cộng
+    else groups.push({ box: it.box, count: it.count });    // tách rời = cá thể mới
+  }
+  return groups;
 }
 
 // Gom tập id ẢNH NGUỒN của 1 item: từ srcImgs (đã gộp trước đó), srcImg (lúc phân tích), và imgId của các box.
@@ -1338,21 +1355,18 @@ function InventoryExtractor() {
             mapLimit(groups, 4, async (g) => {
               const idxs = (g.members || []).map((m) => m - 1).filter((i) => i >= 0 && i < regions.length);
               if (!idxs.length) return null;
-              // đại diện = cá thể có box LỚN NHẤT (thường rõ nhất, ít bị che)
-              let repI = idxs[0], repA = _boxArea(regions[repI]);
-              for (const i of idxs) { const a = _boxArea(regions[i]); if (a > repA) { repA = a; repI = i; } }
-              const rg = regions[repI];
-              const crop = makeExportCrop(el, rg, 1000);
+              // Đếm cá thể THẬT: box chồng nhau (giường bị khoanh 3 lần) gộp làm 1; chỉ box tách rời mới cộng.
+              const inst = spatialInstances(idxs.map((i) => regions[i]));
+              const rep = inst[0].box;   // đại diện = box lớn nhất cả nhóm
+              const crop = makeExportCrop(el, rep, 1000);
               if (!crop || !crop.data) return null;
-              const one = await readCrop(b64of(crop.data), g.loai || rg.label);   // hint = loại do C gom được
+              const one = await readCrop(b64of(crop.data), g.loai || regions[idxs[0]].label);   // hint = loại do C gom được
               if (!one) return null;
-              one.instances = [{ x1: rg.x1, y1: rg.y1, x2: rg.x2, y2: rg.y2 }];    // 1 ký hiệu = cá thể đại diện
-              // so_luong = tổng count các thành viên trong nhóm (mỗi cá thể count=1 -> = số thành viên).
-              // Bền với cả trường hợp B lỡ gộp (1 box count=k): vẫn cộng đúng.
-              one.soLuong = idxs.reduce((s, i) => s + (Number.isInteger(regions[i].count) && regions[i].count > 0 ? regions[i].count : 1), 0);
+              one.instances = [{ x1: rep.x1, y1: rep.y1, x2: rep.x2, y2: rep.y2 }];    // 1 ký hiệu = cá thể đại diện
+              one.soLuong = inst.reduce((s, gg) => s + gg.count, 0);   // = số cá thể tách rời (đã bỏ phần chồng)
               if (g.nhom && !one.nhom) one.nhom = g.nhom;
-              // lưu box mọi thành viên (không hiển thị marker) — để dành cho việc tách nhóm / xuất sau này
-              one.memberBoxes = idxs.map((i) => ({ x1: regions[i].x1, y1: regions[i].y1, x2: regions[i].x2, y2: regions[i].y2 }));
+              // box mọi cá thể (mỗi cụm 1 box, không hiển thị marker) — để dành cho tách nhóm / xuất sau này
+              one.memberBoxes = inst.map((gg) => ({ x1: gg.box.x1, y1: gg.box.y1, x2: gg.box.x2, y2: gg.box.y2 }));
               return one;
             }),
             readSurfaces(pic).catch(() => []),
