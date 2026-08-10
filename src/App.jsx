@@ -40,6 +40,7 @@ const Scissors = (p) => svg(p, C(6, 6, 3), C(6, 18, 3), P("M20 4 8.12 15.88"), P
 const ZoomIn = (p) => svg(p, C(11, 11, 8), P("M21 21l-4.3-4.3"), P("M11 8v6"), P("M8 11h6"));
 const ChevronDown = (p) => svg(p, P("M6 9l6 6 6-6"));
 const ChevronUp = (p) => svg(p, P("M18 15l-6-6-6 6"));
+const ArrowLR = (p) => svg(p, P("m16 3 4 4-4 4"), P("M20 7H4"), P("m8 21-4-4 4-4"), P("M4 17h16"));
 
 /* ================= UNCHANGED LOGIC (verbatim) ================= */
 const NHOM_OPTS = ["Nội thất", "Đèn", "Vật liệu bề mặt", "Cửa & Vách kính", "Hardware", "Trang trí"];
@@ -126,6 +127,7 @@ CÂY XANH:
 
 QUY TẮC ĐẾM:
 - Chỉ tạo box cho cá thể NHÌN THẤY RÕ; mỗi cá thể 1 box. KHÔNG phỏng đoán vật bị khuất (ghi ở ghi_chu, không tăng số).
+- Cá thể ĐỐI XỨNG GƯƠNG (lật trái–phải) hoặc XOAY sang hướng khác của CÙNG một thiết kế = CÙNG một loại: gộp về 1 dòng và tăng so_luong (vd 2 táp đầu giường đối xứng, 2 ghế cùng mẫu quay khác hướng).
 - Vật liệu bề mặt / chi tiết dạng đường: 1 box đại diện (không dùng để đếm).
 - Không bịa. Không dùng "|" hay ";" trong chữ.
 
@@ -573,7 +575,9 @@ function parseGroups(text, n) {
 async function clusterRegions(montageB64, n) {
   const prompt =
 `Ảnh kèm theo là 1 lưới (contact sheet) gồm ${n} ô, mỗi ô đánh SỐ ở góc trên-trái (1..${n}). Mỗi ô là ảnh cắt của MỘT vật thể trong CÙNG một ảnh nội thất.
-Nhiệm vụ: gom những ô là CÙNG MỘT sản phẩm (cùng kiểu dáng/thiết kế/chất liệu; bỏ qua khác biệt nhỏ do góc nhìn, khoảng cách hay ánh sáng) vào chung 1 nhóm. Hai vật KHÁC kiểu dáng phải ở 2 nhóm khác nhau. Mỗi ô thuộc ĐÚNG 1 nhóm; mọi số 1..${n} xuất hiện đúng một lần.
+Nhiệm vụ: gom những ô là CÙNG MỘT sản phẩm (cùng kiểu dáng/thiết kế/chất liệu; bỏ qua khác biệt nhỏ do góc nhìn, khoảng cách hay ánh sáng) vào chung 1 nhóm.
+QUAN TRỌNG: coi bản ĐỐI XỨNG GƯƠNG (lật trái–phải) và bản XOAY sang hướng khác của cùng một thiết kế là CÙNG MỘT sản phẩm — ví dụ 2 táp/tủ đầu giường đặt đối xứng hai bên giường, 2 ghế cùng mẫu quay hướng khác nhau, 2 đèn tường đối xứng: tất cả phải nằm CHUNG 1 nhóm (rồi số lượng sẽ tự cộng). Chỉ tách nhóm khi thật sự KHÁC kiểu dáng/thiết kế.
+Mỗi ô thuộc ĐÚNG 1 nhóm; mọi số 1..${n} xuất hiện đúng một lần.
 CHỈ trả về JSON (không markdown, không giải thích), dạng:
 {"groups":[{"members":[1,3,5],"loai":"ghế armchair","nhom":"Nội thất"},{"members":[2],"loai":"bàn trà tròn","nhom":"Nội thất"}]}
 "nhom" chọn 1 trong ["Nội thất","Đèn","Vật liệu bề mặt","Cửa & Vách kính","Hardware","Trang trí"]. "loai" là tên loại ngắn gọn tiếng Việt.`;
@@ -750,9 +754,9 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 .h-e { right:0; top:50%; transform:translate(50%,-50%); cursor:ew-resize; }
 .img-placeholder .ico { width:52px; height:52px; border-radius:14px; background:rgba(123,163,207,0.12); display:flex; align-items:center; justify-content:center; color:var(--ac2); }
 .marker { position:absolute; transform:translate(-50%,-50%); width:24px; height:24px; padding:0; border-radius:50%; background:rgba(255,255,255,0.10); color:#fff;
-  font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid rgba(255,255,255,0.35); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:pointer; line-height:1; touch-action:none; opacity:.75; box-sizing:border-box; }
+  font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid rgba(255,255,255,0.35); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:pointer; line-height:1; touch-action:none; opacity:.5; box-sizing:border-box; }
 .marker.dim { opacity:.42; } .marker.active { background:rgba(255,255,255,0.12); color:#fff; border:1.5px solid rgba(127,216,171,0.5); transform:translate(-50%,-50%) scale(1.15); z-index:6; opacity:1; box-shadow:0 2px 8px rgba(0,0,0,.5); }
-.marker.active::before, .marker.hl::before { content:""; position:absolute; inset:-2.5px; border-radius:50%; pointer-events:none; padding:2px;
+.marker.active::before, .marker.hl::before { content:""; position:absolute; inset:-3px; border-radius:50%; pointer-events:none; padding:3px;
   background:conic-gradient(from 0deg, rgba(127,216,171,0) 0deg, rgba(127,216,171,0.12) 140deg, #7fd8ab 275deg, #d8ffe9 330deg, #7fd8ab 360deg);
   -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor;
   mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite:exclude;
@@ -931,6 +935,12 @@ const cssExtra = `
 .split-divider:hover::before, .split-divider.dragging::before { background:var(--ac); box-shadow:0 0 0 1px rgba(123,163,207,0.35); }
 .pane-table { flex:1 1 0; order:3; }
 .pane-body { flex:1 1 auto; min-height:0; overflow-y:auto; padding:18px 22px 44px; }
+.pane-table .pane-body { overflow:hidden; padding:18px 22px 0; display:flex; flex-direction:column; }
+.pane-table .pane-body > div { display:flex; flex-direction:column; min-height:0; flex:1 1 auto; }
+.tbl-head { flex:0 0 auto; }
+.tbl-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; padding-bottom:44px; }
+.tbl-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:2px 0 12px; padding-top:12px; border-top:1px solid var(--line); }
+.tbl-actions .spacer { flex:1; }
 
 @media (max-width: 1080px) {
   .ax2 { height:auto; overflow:visible; }
@@ -939,24 +949,27 @@ const cssExtra = `
   .pane-table { border-bottom:1px solid var(--line); }
   .split-divider { display:none; }
   .pane-body { overflow:visible; }
+  .pane-table .pane-body { overflow:visible; height:auto; display:block; }
+  .tbl-scroll { overflow:visible; padding-bottom:0; }
+  .grp-caption, .grp-head { position:static; }
 }
 
 /* Scrollbar đồng bộ theme (WebKit + Firefox) cho bảng Inventory & các vùng cuộn */
-.pane-body, .sched-scroll, .lb-card { scrollbar-width:thin; scrollbar-color:rgba(123,163,207,0.45) var(--input); }
-.pane-body::-webkit-scrollbar, .sched-scroll::-webkit-scrollbar, .lb-card::-webkit-scrollbar { width:11px; height:11px; }
-.pane-body::-webkit-scrollbar-track, .sched-scroll::-webkit-scrollbar-track, .lb-card::-webkit-scrollbar-track { background:var(--input); border-radius:8px; }
-.pane-body::-webkit-scrollbar-thumb, .sched-scroll::-webkit-scrollbar-thumb, .lb-card::-webkit-scrollbar-thumb {
+.pane-body, .tbl-scroll, .sched-scroll, .lb-card { scrollbar-width:thin; scrollbar-color:rgba(123,163,207,0.45) var(--input); }
+.pane-body::-webkit-scrollbar, .tbl-scroll::-webkit-scrollbar, .sched-scroll::-webkit-scrollbar, .lb-card::-webkit-scrollbar { width:11px; height:11px; }
+.pane-body::-webkit-scrollbar-track, .tbl-scroll::-webkit-scrollbar-track, .sched-scroll::-webkit-scrollbar-track, .lb-card::-webkit-scrollbar-track { background:var(--input); border-radius:8px; }
+.pane-body::-webkit-scrollbar-thumb, .tbl-scroll::-webkit-scrollbar-thumb, .sched-scroll::-webkit-scrollbar-thumb, .lb-card::-webkit-scrollbar-thumb {
   background-color:rgba(123,163,207,0.4); border-radius:8px; border:2px solid var(--input); }
-.pane-body::-webkit-scrollbar-thumb:hover, .sched-scroll::-webkit-scrollbar-thumb:hover, .lb-card::-webkit-scrollbar-thumb:hover { background-color:var(--ac); }
-.pane-body::-webkit-scrollbar-thumb:active, .sched-scroll::-webkit-scrollbar-thumb:active, .lb-card::-webkit-scrollbar-thumb:active { background-color:var(--ac2); }
-.pane-body::-webkit-scrollbar-corner, .sched-scroll::-webkit-scrollbar-corner, .lb-card::-webkit-scrollbar-corner { background:var(--input); }
+.pane-body::-webkit-scrollbar-thumb:hover, .tbl-scroll::-webkit-scrollbar-thumb:hover, .sched-scroll::-webkit-scrollbar-thumb:hover, .lb-card::-webkit-scrollbar-thumb:hover { background-color:var(--ac); }
+.pane-body::-webkit-scrollbar-thumb:active, .tbl-scroll::-webkit-scrollbar-thumb:active, .sched-scroll::-webkit-scrollbar-thumb:active, .lb-card::-webkit-scrollbar-thumb:active { background-color:var(--ac2); }
+.pane-body::-webkit-scrollbar-corner, .tbl-scroll::-webkit-scrollbar-corner, .sched-scroll::-webkit-scrollbar-corner, .lb-card::-webkit-scrollbar-corner { background:var(--input); }
 
 /* Logo ARTIUS trong banner */
 .tb-logo { height:44px; width:auto; display:block; }
 
 /* ===== Bảng vật liệu GỘP THEO NHÓM (thay cho <table class="sched">) ===== */
-.grp-wrap { border:1px solid var(--line); border-radius:14px; background:var(--panel2); overflow:hidden; }
-.grp-head { padding:7px 12px; background:#0e1526; font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; border-bottom:1px solid var(--line2); display:flex; align-items:center; gap:7px; position:sticky; top:0; z-index:2; }
+.grp-wrap { border:none; border-radius:0; background:transparent; overflow:visible; }
+.grp-head { padding:7px 12px; background:#0e1526; font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; border-bottom:1px solid var(--line2); border-top:1px solid var(--line2); display:flex; align-items:center; gap:7px; position:sticky; top:30px; z-index:2; }
 .grp-dot { width:8px; height:8px; border-radius:2px; display:inline-block; flex:0 0 auto; }
 .grp-row { display:flex; align-items:center; gap:9px; padding:7px 12px; border-bottom:1px solid var(--line); border-left:3px solid transparent; cursor:pointer; transition:background .12s; }
 .grp-row.active-row { background:rgba(123,163,207,0.12); }
@@ -973,21 +986,36 @@ const cssExtra = `
 .grp-mon { font-size:12px; padding:2px 0; }
 .grp-vl { font-size:10px; color:var(--mut2); padding:1px 0; }
 .grp-vitri { width:110px; flex:0 0 auto; font-size:11px; color:var(--tx3); padding:5px 4px; }
-.grp-sl { width:34px; flex:0 0 auto; text-align:center; font-size:11px; font-weight:700; color:var(--tx2); padding:4px 0; -moz-appearance:textfield; }
+.grp-sl { width:26px; flex:0 0 auto; text-align:center; font-size:11px; font-weight:700; color:var(--tx2); padding:4px 0; -moz-appearance:textfield; }
 .grp-sl::-webkit-outer-spin-button, .grp-sl::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
 .grp-sl.qty-zero { color:var(--amber2); }
+.grp-qty { width:72px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; gap:3px; }
+.qty-btn { width:18px; height:18px; flex:0 0 auto; padding:0; border-radius:5px; border:1px solid var(--line2); background:rgba(255,255,255,0.04); color:var(--tx2); font-size:13px; font-weight:700; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.qty-btn:hover { background:rgba(127,216,171,0.14); color:#cfeede; border-color:rgba(127,216,171,0.45); }
+.qty-btn:active { transform:scale(0.92); }
 .grp-select { width:104px; flex:0 0 auto; background:transparent; border:none; font-family:var(--sans); color:var(--tx3); font-size:11px; padding:5px 0; cursor:pointer; }
 .grp-select option { background:#101725; color:var(--tx2); }
 .grp-note { width:110px; flex:0 0 auto; font-size:10.5px; color:var(--faint); padding:5px 4px; }
-.grp-caption { display:flex; align-items:center; gap:9px; padding:6px 12px; background:#0e1526; border-bottom:1px solid var(--line2); font-size:9px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--mut2); position:sticky; top:0; z-index:3; }
+.grp-caption { display:flex; align-items:center; gap:9px; height:30px; box-sizing:border-box; padding:0 12px; background:#0e1526; border-bottom:1px solid var(--line2); font-size:9px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--mut2); position:sticky; top:0; z-index:4; }
 .grp-cap-sel { width:15px; flex:0 0 auto; }
 .grp-cap-thumb { width:72px; flex:0 0 auto; }
 .grp-cap-code { width:60px; flex:0 0 auto; }
 .grp-cap-main { flex:1; min-width:120px; }
 .grp-cap-vitri { width:110px; flex:0 0 auto; }
-.grp-cap-sl { width:34px; flex:0 0 auto; text-align:center; }
+.grp-cap-sl { width:72px; flex:0 0 auto; text-align:center; }
 .grp-cap-select { width:104px; flex:0 0 auto; }
-.grp-cap-act { width:30px; flex:0 0 auto; }
+.grp-cap-act { width:60px; flex:0 0 auto; }
+.grp-row .row-act { flex:0 0 60px; width:60px; display:flex; align-items:center; justify-content:flex-end; gap:1px; position:relative; }
+.grp-row .row-act .icon-danger { flex:0 0 auto; width:auto; padding:7px; }
+.icon-move { background:transparent; border:none; color:var(--mut2); cursor:pointer; padding:7px; border-radius:7px; display:inline-flex; }
+.icon-move:hover { color:var(--ac2); background:rgba(123,163,207,0.12); }
+.move-menu { position:fixed; z-index:80; min-width:170px; background:#101725; border:1px solid var(--line2); border-radius:10px; box-shadow:0 12px 34px rgba(0,0,0,0.55); padding:5px; }
+.move-menu-cap { font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); padding:5px 9px 6px; }
+.move-menu-item { display:block; width:100%; text-align:left; background:transparent; border:none; color:var(--tx2); font-family:var(--sans); font-size:12px; padding:7px 9px; border-radius:7px; cursor:pointer; }
+.move-menu-item:hover:not(:disabled) { background:rgba(127,216,171,0.12); color:#cfeede; }
+.move-menu-item:disabled { color:var(--faint); cursor:default; }
+.move-menu-item.cur { color:var(--ac3); }
+.menu-backdrop { position:fixed; inset:0; z-index:79; background:transparent; }
 `;
 
 // Lấy tiền tố nhóm mã của 1 dòng: ưu tiên phần chữ trong "ma" (vd "F-03" -> "F"),
@@ -1059,6 +1087,7 @@ function InventoryExtractor() {
   const [selected, setSelected] = useState(() => new Set()); // B1: id các dòng đang tick
   const [hoverId, setHoverId] = useState(null);              // C1: dòng đang rê chuột
   const [search, setSearch] = useState("");                  // C2: tìm nhanh
+  const [moveMenu, setMoveMenu] = useState(null);            // { id, x, y, up } — menu chuyển nhóm
   const [onlyLow, setOnlyLow] = useState(false);             // C2: chỉ hiện tin cậy Thấp
   const [onlyUnpinned, setOnlyUnpinned] = useState(false);   // A: chỉ hiện dòng chưa gắn ký hiệu (SL=0)
   const [imgFilter, setImgFilter] = useState(null);          // lọc bảng: null = tất cả ảnh; hoặc imgId của 1 ảnh phối cảnh
@@ -1494,8 +1523,37 @@ function InventoryExtractor() {
   }
 
   function updateRow(id, field, value) { setRows((rs) => rs.map((r) => (r.id === id ? { ...r, [field]: value } : r))); }
-  function deleteRow(id) { pushUndo("xoá dòng"); setRows((rs) => rs.filter((r) => r.id !== id)); if (activeId === id) setActiveId(null); setSelected((s) => { const n = new Set(s); n.delete(id); return n; }); }
-  function addRow() { const r = { id: nextId(), prefix: "", ma: "", nhom: "Nội thất", mon: "", vat_lieu: "", soLuong: 1, vi_tri: "", do_tin_cay: "Trung bình", ghi_chu: "", instances: [], thumb: null }; setRows((rs) => sortRows([...rs, r])); setActiveId(r.id); }
+  // Tăng/giảm số lượng bằng nút +/- (không xuống dưới 0).
+  function bumpQty(r, d) {
+    const cur = qtyOf(r);
+    const base = Number.isFinite(cur) ? cur : 0;
+    updateRow(r.id, "soLuong", String(Math.max(0, base + d)));
+  }
+  function deleteRow(id) { pushUndo("xoá dòng"); setRows((rs) => codeItems(rs.filter((r) => r.id !== id), gpOf)); if (activeId === id) setActiveId(null); setSelected((s) => { const n = new Set(s); n.delete(id); return n; }); }
+  // Thêm dòng mới NGAY DƯỚI dòng đang chọn (cùng nhóm với dòng đó); nếu chưa chọn thì thêm cuối.
+  function addRow() {
+    const sel = rows.find((r) => r.id === activeId);
+    const r = { id: nextId(), prefix: "", ma: "", nhom: sel ? sel.nhom : "Nội thất", mon: "", vat_lieu: "", soLuong: 1, vi_tri: "", do_tin_cay: "Trung bình", ghi_chu: "", instances: [], thumb: null };
+    setRows((rs) => {
+      const idx = sel ? rs.findIndex((x) => x.id === sel.id) : -1;
+      const next = idx >= 0 ? [...rs.slice(0, idx + 1), r, ...rs.slice(idx + 1)] : [...rs, r];
+      return codeItems(next, gpOf);
+    });
+    setActiveId(r.id);
+  }
+  // Chuyển 1 dòng sang nhóm phân loại khác (thay đổi "nhom"). Mã prefix giữ nguyên — sửa tay ở ô Mã nếu cần.
+  function moveRowToNhom(id, nhom) {
+    pushUndo("chuyển nhóm");
+    setRows((rs) => sortRows(rs.map((r) => (r.id === id ? { ...r, nhom } : r))));
+    setMoveMenu(null);
+  }
+  function openMoveMenu(e, r) {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mh = 40 + NHOM_OPTS.length * 34;   // ước lượng chiều cao menu
+    const up = rect.bottom + mh > window.innerHeight;
+    setMoveMenu({ id: r.id, x: rect.right, y: up ? rect.top : rect.bottom, up });
+  }
   function recode() {
     setRows((rs) => sortRows(codeItems(mergeRows(rs, gpOf), gpOf)));
     setActiveId(null); setSelected(new Set());
@@ -2053,6 +2111,7 @@ function InventoryExtractor() {
 
           {/* 02 · table */}
           <div>
+            <div className="tbl-head">
             <div className="block-head">
               <span className="section-label">01 · Bảng Inventory & Mã vật liệu</span>
               {hasRows && <span className="count">{rows.length} món · {totalSyms} ký hiệu</span>}
@@ -2105,6 +2164,14 @@ function InventoryExtractor() {
               </div>
             )}
 
+            <div className="tbl-actions">
+              <button className="btn btn-ghost" onClick={addRow}><Plus size={15} /> Thêm dòng</button>
+              <button className="btn btn-ghost" onClick={recode} disabled={!hasRows}><Hash size={15} /> Gộp trùng & đánh mã lại</button>
+              <button className="btn btn-ghost" onClick={undo} disabled={!undoStack.length} title={undoStack.length ? ("Hoàn tác: " + undoStack[undoStack.length - 1].label + " (Ctrl/Cmd+Z)") : "Không có gì để hoàn tác"}><Undo2 size={15} /> Hoàn tác{undoStack.length ? " (" + undoStack.length + ")" : ""}</button>
+              <div className="spacer" />
+              <button className="btn btn-ghost" onClick={exportExcel} disabled={!hasRows}><Download size={15} /> Xuất Excel (bảng)</button>
+            </div>
+
             {selCount > 0 && (
               <div className="selbar">
                 <span className="seln">Đã chọn {selCount} dòng</span>
@@ -2115,7 +2182,9 @@ function InventoryExtractor() {
               </div>
             )}
 
-            <div className="grp-wrap">
+            </div>{/* /tbl-head */}
+
+            <div className="tbl-scroll" onScroll={() => moveMenu && setMoveMenu(null)}>
               {hasRows && (
                 <div className="grp-caption">
                   <span className="grp-cap-sel" />
@@ -2128,6 +2197,7 @@ function InventoryExtractor() {
                   <span className="grp-cap-act" />
                 </div>
               )}
+            <div className="grp-wrap">
               {hasRows ? (
                 groupRowsByNhom(rows.filter(passFilter)).map((g) => (
                   <div key={g.key}>
@@ -2153,15 +2223,22 @@ function InventoryExtractor() {
                           <input className="grp-input grp-mon" aria-label="Món" placeholder="Tên món…" value={r.mon} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "mon", e.target.value)} />
                           <input className="grp-input grp-vl" aria-label="Vật liệu" placeholder="Vật liệu / finish…" value={r.vat_lieu} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "vat_lieu", e.target.value)} />
                         </div>
-                        <input type="number" min="0" className={"grp-input grp-sl" + (qtyOf(r) === 0 ? " qty-zero" : "")} aria-label="Số lượng"
-                          title="Số lượng do AI đếm — có thể sửa tay"
-                          value={r.soLuong != null ? r.soLuong : (r.instances.length || "")}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => updateRow(r.id, "soLuong", e.target.value)} />
+                        <div className="grp-qty" onClick={(e) => e.stopPropagation()}>
+                          <button className="qty-btn" aria-label="Giảm số lượng" title="Giảm" onClick={(e) => { e.stopPropagation(); bumpQty(r, -1); }}>−</button>
+                          <input type="number" min="0" className={"grp-input grp-sl" + (qtyOf(r) === 0 ? " qty-zero" : "")} aria-label="Số lượng"
+                            title="Số lượng do AI đếm — có thể sửa tay hoặc dùng nút +/−"
+                            value={r.soLuong != null ? r.soLuong : (r.instances.length || "")}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => updateRow(r.id, "soLuong", e.target.value)} />
+                          <button className="qty-btn" aria-label="Tăng số lượng" title="Tăng" onClick={(e) => { e.stopPropagation(); bumpQty(r, 1); }}>+</button>
+                        </div>
                         <select className="grp-select" aria-label="Độ tin cậy" value={TINCAY_OPTS.includes(r.do_tin_cay) ? r.do_tin_cay : "Trung bình"} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "do_tin_cay", e.target.value)}>
                           {TINCAY_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
                         </select>
-                        <button className="icon-danger" aria-label="Xóa dòng" onClick={(e) => { e.stopPropagation(); deleteRow(r.id); }}><Trash2 size={14} /></button>
+                        <div className="row-act">
+                          <button className="icon-move" aria-label="Chuyển sang nhóm khác" title="Chuyển sang nhóm phân loại khác" onClick={(e) => openMoveMenu(e, r)}><ArrowLR width={14} height={14} /></button>
+                          <button className="icon-danger" aria-label="Xóa dòng" onClick={(e) => { e.stopPropagation(); deleteRow(r.id); }}><Trash2 size={14} /></button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2173,17 +2250,25 @@ function InventoryExtractor() {
                 <div className="empty"><div className="msg">Không có dòng nào khớp bộ lọc. <b onClick={() => { setSearch(""); setOnlyLow(false); setOnlyUnpinned(false); setImgFilter(null); setActiveSheet(ALL_SHEET); }} style={{ cursor: "pointer", color: "var(--ac2)" }}>Xoá bộ lọc</b></div></div>
               )}
             </div>
+            </div>{/* /tbl-scroll */}
 
-            <div className="toolbar">
-              <button className="btn btn-ghost" onClick={addRow}><Plus size={15} /> Thêm dòng</button>
-              <button className="btn btn-ghost" onClick={recode} disabled={!hasRows}><Hash size={15} /> Gộp trùng & đánh mã lại</button>
-              <button className="btn btn-ghost" onClick={undo} disabled={!undoStack.length} title={undoStack.length ? ("Hoàn tác: " + undoStack[undoStack.length - 1].label + " (Ctrl/Cmd+Z)") : "Không có gì để hoàn tác"}><Undo2 size={15} /> Hoàn tác{undoStack.length ? " (" + undoStack.length + ")" : ""}</button>
-              <div className="spacer" />
-              <button className="btn btn-ghost" onClick={exportExcel} disabled={!hasRows}><Download size={15} /> Xuất Excel (bảng)</button>
-            </div>
             {status && <div className="status"><span style={{ width: 6, height: 6, borderRadius: 6, background: "var(--ac2)", display: "inline-block" }} />{status}</div>}
           </div>
           </div>
+
+          {moveMenu && (
+            <>
+              <div className="menu-backdrop" onClick={() => setMoveMenu(null)} />
+              <div className="move-menu" style={{ left: moveMenu.x, top: moveMenu.y, transform: moveMenu.up ? "translate(-100%,-100%)" : "translate(-100%,0)" }} onClick={(e) => e.stopPropagation()}>
+                <div className="move-menu-cap">Chuyển sang nhóm</div>
+                {NHOM_OPTS.map((nh) => {
+                  const cur = rows.find((r) => r.id === moveMenu.id);
+                  const isCur = cur && cur.nhom === nh;
+                  return <button key={nh} className={"move-menu-item" + (isCur ? " cur" : "")} disabled={isCur} onClick={() => moveRowToNhom(moveMenu.id, nh)}>{nh}</button>;
+                })}
+              </div>
+            </>
+          )}
         </section>
       </div>
 
