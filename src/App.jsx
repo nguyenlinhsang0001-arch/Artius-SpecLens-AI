@@ -775,7 +775,9 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 .hint { font-size:11.5px; color:var(--mut); margin-top:11px; line-height:1.5; } .hint.edit-on { color:var(--amber2); }
 
 /* schedule table */
-.sheet-tabs { display:flex; flex-wrap:wrap; gap:6px; margin:14px 0 12px; padding:0; }
+.sheet-tabs { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:14px 0 12px; padding:0; }
+.tabs-search { margin-left:auto; display:flex; align-items:center; gap:10px; }
+.tabs-search .searchbox { flex:0 0 260px; }
 .sheet-tab { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; font-size:12px; font-weight:600; color:var(--tx3);
   background:#0f1626; border:1px solid rgba(255,255,255,0.08); border-radius:9px; cursor:pointer; transition:background .15s,color .15s,border-color .15s; }
 .sheet-tab:hover { color:var(--tx); border-color:rgba(255,255,255,0.18); }
@@ -1827,9 +1829,10 @@ function InventoryExtractor() {
     ctx.font = "bold " + Math.round(r * 1.15) + "px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     flat.forEach((f, i) => {
       const cx = sep[i].x, cy = sep[i].y;
-      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = "rgba(123,163,207,0.95)"; ctx.fill();
-      ctx.lineWidth = Math.max(1, r * 0.14); ctx.strokeStyle = "#0c1524"; ctx.stroke();
-      ctx.fillStyle = "#0c1524"; ctx.fillText(String(f.no), cx, cy);
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255,0.25)"; ctx.fill();                 // nền trắng trong suốt 75%
+      ctx.lineWidth = Math.max(1.5, r * 0.16); ctx.strokeStyle = "#e01e1e"; ctx.stroke(); // viền đỏ
+      ctx.fillStyle = "#e01e1e"; ctx.fillText(String(f.no), cx, cy);        // số đỏ
     });
     return c.toDataURL("image/jpeg", 0.9);
   }
@@ -2127,6 +2130,14 @@ function InventoryExtractor() {
                     {t.key} <span className="tab-n">{t.count}</span>
                   </button>
                 ))}
+                <div className="tabs-search">
+                  {(q || onlyLow || onlyUnpinned || imgFilter != null || curSheet !== ALL_SHEET) && <span className="filter-note">Hiện {visibleCount}/{rows.length} dòng</span>}
+                  <div className="searchbox">
+                    <Search width={15} height={15} />
+                    <input placeholder="Tìm theo mã, món, vật liệu, vị trí…" value={search} onChange={(e) => setSearch(e.target.value)} />
+                    {search && <button className="clr" title="Xoá tìm" aria-label="Xoá tìm" onClick={() => setSearch("")}><XIcon width={14} height={14} /></button>}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -2147,40 +2158,19 @@ function InventoryExtractor() {
               </div>
             )}
 
-            {hasRows && (
-              <div className="filterbar">
-                <div className="searchbox">
-                  <Search width={15} height={15} />
-                  <input placeholder="Tìm theo mã, món, vật liệu, vị trí…" value={search} onChange={(e) => setSearch(e.target.value)} />
-                  {search && <button className="clr" title="Xoá tìm" aria-label="Xoá tìm" onClick={() => setSearch("")}><XIcon width={14} height={14} /></button>}
-                </div>
-                <button className={"chip-toggle" + (onlyLow ? " on" : "")} onClick={() => setOnlyLow((v) => !v)} title="Chỉ hiện dòng độ tin cậy Thấp">
-                  <span className="dotc" /> Chỉ tin cậy Thấp{lowN ? " (" + lowN + ")" : ""}
-                </button>
-                <button className={"chip-toggle" + (onlyUnpinned ? " on" : "")} onClick={() => setOnlyUnpinned((v) => !v)} title="Chỉ hiện dòng chưa gắn ký hiệu (SL=0, không có hình/chấm)">
-                  <span className="dotc" style={{ background: "var(--ac)" }} /> Chưa gắn KH{unpinnedN ? " (" + unpinnedN + ")" : ""}
-                </button>
-                {(q || onlyLow || onlyUnpinned || imgFilter != null || curSheet !== ALL_SHEET) && <span className="filter-note">Hiện {visibleCount}/{rows.length} dòng</span>}
-              </div>
-            )}
-
             <div className="tbl-actions">
               <button className="btn btn-ghost" onClick={addRow}><Plus size={15} /> Thêm dòng</button>
-              <button className="btn btn-ghost" onClick={recode} disabled={!hasRows}><Hash size={15} /> Gộp trùng & đánh mã lại</button>
+              <button className="btn btn-ghost" onClick={mergeSelected} disabled={selCount < 2} title={selCount < 2 ? "Tick chọn từ 2 dòng để gộp" : ("Gộp " + selCount + " dòng đã chọn thành 1")}><Combine size={15} /> Gộp dòng đã chọn{selCount >= 2 ? " (" + selCount + ")" : ""}</button>
               <button className="btn btn-ghost" onClick={undo} disabled={!undoStack.length} title={undoStack.length ? ("Hoàn tác: " + undoStack[undoStack.length - 1].label + " (Ctrl/Cmd+Z)") : "Không có gì để hoàn tác"}><Undo2 size={15} /> Hoàn tác{undoStack.length ? " (" + undoStack.length + ")" : ""}</button>
               <div className="spacer" />
+              <button className={"chip-toggle" + (onlyLow ? " on" : "")} onClick={() => setOnlyLow((v) => !v)} title="Chỉ hiện dòng độ tin cậy Thấp">
+                <span className="dotc" /> Chỉ tin cậy Thấp{lowN ? " (" + lowN + ")" : ""}
+              </button>
+              <button className={"chip-toggle" + (onlyUnpinned ? " on" : "")} onClick={() => setOnlyUnpinned((v) => !v)} title="Chỉ hiện dòng chưa gắn ký hiệu (SL=0, không có hình/chấm)">
+                <span className="dotc" style={{ background: "var(--ac)" }} /> Chưa gắn KH{unpinnedN ? " (" + unpinnedN + ")" : ""}
+              </button>
               <button className="btn btn-ghost" onClick={exportExcel} disabled={!hasRows}><Download size={15} /> Xuất Excel (bảng)</button>
             </div>
-
-            {selCount > 0 && (
-              <div className="selbar">
-                <span className="seln">Đã chọn {selCount} dòng</span>
-                <button className="btn btn-ghost" onClick={mergeSelected} disabled={selCount < 2}><Combine size={15} /> Gộp dòng đã chọn</button>
-                <button className="btn btn-ghost" onClick={splitSelected} disabled={!canSplit}><Scissors size={15} /> Tách dòng</button>
-                <div className="spacer" />
-                <button className="btn btn-ghost" onClick={clearSelect}><XIcon size={15} /> Bỏ chọn</button>
-              </div>
-            )}
 
             </div>{/* /tbl-head */}
 
