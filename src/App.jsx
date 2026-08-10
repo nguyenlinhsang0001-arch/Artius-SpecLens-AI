@@ -1,5 +1,5 @@
 /*
-  Inventory Extractor — ARTIUS reskin (v5).
+  Inventory Extractor — ARTIUS reskin (v2).
   FUNCTIONALITY is identical to uploads/inventory-extractor.jsx (v4):
   same parsing, material-code table, marker editing, thumbnails,
   Claude image analysis, Excel/TSV/annotated-image/JSON-bundle export.
@@ -130,6 +130,7 @@ QUY TẮC ĐẾM:
 - Không bịa. Không dùng "|" hay ";" trong chữ.
 
 KHÔNG BÓC (bỏ qua hoàn toàn, không tạo dòng): người/nhân viên/lễ tân (là người), màn hình & máy tính, laptop, bàn phím, và sách. (Lưu ý: quầy lễ tân, kệ/tủ sách vẫn là nội thất — vẫn bóc.)
+TRANG TRÍ: chỉ bóc TRANH/ẢNH/đồ nghệ thuật (mã AW) và CÂY CẢNH/CHẬU (mã GW). KHÔNG bóc bình/lọ, khay/khay trà, gối tựa, giỏ/rổ mây đan, nến và đồ trang trí lặt vặt khác.
 
 Ví dụ dòng:
 PT|Vật liệu bề mặt|Sơn đen mờ|Tường|Vách tivi|Cao||0.05,0.10,0.40,0.85
@@ -237,6 +238,28 @@ function monExcluded(mon) {
   if (has("sach") && !furn) return true;
   return false;
 }
+
+// --- Chuẩn hoá nhóm TRANG TRÍ ---
+// Yêu cầu: tranh/ảnh/đồ nghệ thuật -> mã AW; chậu + cây cảnh -> mã GW.
+// Loại bỏ các món trang trí lặt vặt: bình/lọ, khay (trà), gối, sách, giỏ/rổ mây đan, nến...
+// Trả về: item (giữ/đổi mã) hoặc null (loại bỏ).
+function normDecor(it) {
+  // KHÔNG đụng các nhóm có ngữ nghĩa rõ ràng khác (tránh nhầm "tường" -> "tượng", "đèn cây" -> "cây"):
+  const nhom = String(it.nhom || "");
+  if (nhom === "Đèn" || nhom === "Vật liệu bề mặt" || nhom === "Cửa & Vách kính" || nhom === "Hardware") return it;
+  const t = " " + normTokens(it.mon) + " ";
+  const has = (w) => t.includes(" " + w + " ");
+  const isArt = has("tranh") || has("poster") || has("canvas") || (has("nghe") && has("thuat"));
+  const isPlant = has("chau") || has("bonsai") || has("kieng") || ((has("cay") || has("caycanh")) && !has("den"));
+  // Chỉ xử lý trong phạm vi TRANG TRÍ (hoặc rõ ràng là tranh/cây, dù nhóm bị gán lệch).
+  if (nhom !== "Trang trí" && !isArt && !isPlant) return it;
+  if (isPlant) return { ...it, prefix: "GW", nhom: "Trang trí", ma: "" };   // chậu + cây cảnh -> GW
+  if (isArt) return { ...it, prefix: "AW", nhom: "Trang trí", ma: "" };      // tranh/ảnh/nghệ thuật -> AW
+  // Trong nhóm trang trí: loại món lặt vặt (bình/lọ, khay, gối, sách, giỏ/rổ mây, nến...)
+  if (has("binh") || has("lo") || has("khay") || has("goi") || has("sach") || has("gio") || has("ro") || has("nen")) return null;
+  return it;
+}
+const normalizeDecorList = (items) => (items || []).map(normDecor).filter(Boolean);
 
 // --- Khử trùng ĐỒ RỜI trong CÙNG 1 ẢNH (khi Gemini khoanh nhiều box cho cùng 1 vật) ---
 function _boxInter(a, b) {
@@ -726,10 +749,10 @@ html, body, #root { margin:0; padding:0; height:100%; background:#070a11; }
 .h-w { left:0; top:50%; transform:translate(-50%,-50%); cursor:ew-resize; }
 .h-e { right:0; top:50%; transform:translate(50%,-50%); cursor:ew-resize; }
 .img-placeholder .ico { width:52px; height:52px; border-radius:14px; background:rgba(123,163,207,0.12); display:flex; align-items:center; justify-content:center; color:var(--ac2); }
-.marker { position:absolute; transform:translate(-50%,-50%); min-width:24px; height:24px; padding:0 6px; border-radius:12px; background:rgba(255,255,255,0.10); color:#fff;
-  font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid rgba(255,255,255,0.35); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:pointer; line-height:1; touch-action:none; opacity:.75; }
+.marker { position:absolute; transform:translate(-50%,-50%); width:24px; height:24px; padding:0; border-radius:50%; background:rgba(255,255,255,0.10); color:#fff;
+  font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:1.5px solid rgba(255,255,255,0.35); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); box-shadow:0 2px 8px rgba(0,0,0,.5); cursor:pointer; line-height:1; touch-action:none; opacity:.75; box-sizing:border-box; }
 .marker.dim { opacity:.42; } .marker.active { background:rgba(255,255,255,0.12); color:#fff; border:1.5px solid rgba(127,216,171,0.5); transform:translate(-50%,-50%) scale(1.15); z-index:6; opacity:1; box-shadow:0 2px 8px rgba(0,0,0,.5); }
-.marker.active::before, .marker.hl::before { content:""; position:absolute; inset:-4px; border-radius:999px; pointer-events:none; padding:2.5px;
+.marker.active::before, .marker.hl::before { content:""; position:absolute; inset:-2.5px; border-radius:50%; pointer-events:none; padding:2px;
   background:conic-gradient(from 0deg, rgba(127,216,171,0) 0deg, rgba(127,216,171,0.12) 140deg, #7fd8ab 275deg, #d8ffe9 330deg, #7fd8ab 360deg);
   -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor;
   mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite:exclude;
@@ -833,7 +856,7 @@ const cssExtra = `
 .imgadd:hover { border-color:var(--ac2); background:#0f1626; }
 
 /* C1 — hover đồng bộ hàng <-> ký hiệu (đặt SAU .marker.active để thắng khi trùng) */
-.marker.hl { opacity:1; transform:translate(-50%,-50%) scale(1.3); z-index:60; box-shadow:0 0 0 3px rgba(157,192,230,0.65), 0 3px 12px rgba(0,0,0,0.55); }
+.marker.hl { opacity:1; transform:translate(-50%,-50%) scale(1.3); z-index:60; box-shadow:0 3px 12px rgba(0,0,0,0.55); }
 .sched tbody tr.hl-row td { background:rgba(157,192,230,0.16) !important; }
 
 /* C2 — thanh lọc + tìm */
@@ -1207,6 +1230,14 @@ function InventoryExtractor() {
 
   function selectImage(id) { setActiveImgId(id); setMarkerEdit(false); setCropRowId(null); }
 
+  // Cuộn bảng inventory tới đúng hàng (khi bấm ký hiệu trên ảnh).
+  function scrollToRow(rowId) {
+    try {
+      const node = typeof document !== "undefined" && document.getElementById("invrow-" + rowId);
+      if (node && node.scrollIntoView) node.scrollIntoView({ behavior: "smooth", block: "center" });
+    } catch (e) { /* no-op */ }
+  }
+
   // Chọn 1 dòng trong bảng. Nếu có >1 ảnh và ảnh đang xem KHÔNG chứa ký hiệu của dòng này,
   // tự chuyển sang ảnh phối cảnh đầu tiên có ký hiệu của dòng đó.
   // Yêu cầu mới: bấm vào dòng -> VÀO LUÔN trạng thái crop ảnh của dòng đó (nếu dòng đã có ký hiệu).
@@ -1392,6 +1423,7 @@ function InventoryExtractor() {
     setImages((prev) => prev.map((x) => (x.id === imgId ? { ...x, status: "analyzing", err: "" } : x)));
     try {
       let items = await callAnalyze(imgId);
+      items = normalizeDecorList(items);   // Trang trí: tranh->AW, cây/chậu->GW, loại bình/khay/gối/sách/giỏ/nến
       items = mergeSameImage(items);   // C: gộp trùng TRONG cùng ảnh, CỘNG DỒN số lượng (trước khi gộp xuyên ảnh lấy MAX)
       items = items.map((it) => ({ ...it, srcImg: imgId, instances: (it.instances || []).map((b) => ({ ...b, imgId })) }));
       setRows((prev) => {
@@ -1927,7 +1959,7 @@ function InventoryExtractor() {
                     return (<div key={m.rowId + "-" + m.instIdx} className={cls} style={{ left: m.leftPct + "%", top: m.topPct + "%" }}
                       title={no + ". " + ((rows[m.rowIdx] && rows[m.rowIdx].mon) || "—")}
                       onPointerEnter={() => setHoverId(m.rowId)} onPointerLeave={() => setHoverId((h) => (h === m.rowId ? null : h))}
-                      onPointerDown={(e) => startMarker(e, m.rowId, m.instIdx)} onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => startMarker(e, m.rowId, m.instIdx)} onClick={(e) => { e.stopPropagation(); setActiveId(m.rowId); scrollToRow(m.rowId); }}
                       onDoubleClick={(e) => { e.stopPropagation(); setActiveId(m.rowId); if (!markerEdit) setCropRowId((prev) => (prev === m.rowId ? null : m.rowId)); }}>
                       {no}
                       {showDone && (
@@ -2104,7 +2136,7 @@ function InventoryExtractor() {
                       {g.key} · {g.rows.length}
                     </div>
                     {g.rows.map((r) => (
-                      <div key={r.id}
+                      <div key={r.id} id={"invrow-" + r.id}
                         className={"grp-row" + (r.do_tin_cay === "Thấp" ? " row-low" : "") + (r.id === activeId ? " active-row" : "") + (r.id === hoverId ? " hl-row" : "")}
                         style={{ borderLeftColor: GROUP_COLOR[g.key] || "var(--tx3)" }}
                         onClick={() => selectRow(r)}
