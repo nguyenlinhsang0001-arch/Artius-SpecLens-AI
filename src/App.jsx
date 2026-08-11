@@ -519,41 +519,48 @@ html,body{margin:0}
 .expbar{display:flex;align-items:center;gap:12px;padding:9px 16px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:20}
 .expbar .expttl{font-weight:700;font-size:14px;color:var(--tx)}
 .expbar .expmeta{font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.expbar .btn{margin-left:auto;background:#18202f;border:1px solid var(--line);color:var(--tx2);border-radius:8px;padding:7px 12px;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.expbar .btn{background:#18202f;border:1px solid var(--line);color:var(--tx2);border-radius:8px;padding:7px 12px;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .expbar .btn:hover{border-color:var(--ac)}
+.expbar .sp{margin-left:auto}
 #ax{display:flex;--splitpct:45%;height:calc(100vh - 47px);min-height:0;overflow:hidden}
 .tabs-inner{display:contents}
-/* read-only: giữ nguyên diện mạo webapp nhưng vô hiệu thao tác sửa/xoá */
 #invbody input,#invbody select,#invbody .qty-btn,#invbody .axchk{pointer-events:none}
 #invbody .grp-input:disabled,#invbody .grp-sl:disabled{opacity:1;-webkit-text-fill-color:currentColor;color:var(--tx2)}
 #invbody .grp-select:disabled{opacity:1;color:var(--tx2)}
 #invbody .grp-row{cursor:pointer}
 .imgwrap.cropping .marker{display:none}
 .imgstrip .imgtile{cursor:pointer}
-/* ===== B1 · trang IN (A4 ngang: ảnh + legend + title block) ===== */
+/* B2: trạng thái xem bản phân trang (Paged.js) ngay trên màn hình trước khi in */
 .print-only{display:none}
+#pagedpreview{display:none;background:#3b3f46;padding:16px}
+body.paged-on #screen{display:none}
+body.paged-on #pagedpreview{display:block}
+#pagedpreview .pagedjs_page{background:#fff;margin:0 auto 14px;box-shadow:0 4px 18px rgba(0,0,0,.4)}
+/* ===== IN cơ bản (B1 · fallback khi không có Paged.js) — mỗi ảnh 1 trang: ảnh trên, legend dưới ===== */
+@page{size:A4 landscape;margin:8mm}
 @media print{
- @page{size:A4 landscape;margin:10mm}
  html,body{background:#fff!important;color:#000!important}
- .expbar,#ax{display:none!important}
- .print-only{display:block!important}
- .ppage{break-after:page;page-break-after:always}
- .ppage:last-child{break-after:auto;page-break-after:auto}
- .ptitle{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #222;padding-bottom:6px;margin-bottom:10px}
- .ptitle .pt-l b{font-size:15px}.ptitle .pt-l span{display:block;font-size:10px;color:#444;margin-top:2px}
- .ptitle .pt-r{font-size:11px;color:#333;font-weight:700;white-space:nowrap;padding-left:12px}
- .pbody{display:flex;gap:12px;align-items:flex-start}
- .pimg{flex:1 1 57%;min-width:0;text-align:center}
- .pimg-inner{position:relative;display:inline-block;max-width:100%}
- .pimg-inner img{display:block;max-width:100%;max-height:168mm;height:auto;border:1px solid #ccc}
- .pleg{flex:1 1 43%;min-width:0}
+ .expbar{display:none!important}
+ body:not(.paged-on) #screen{display:none!important}
+ body:not(.paged-on) .print-only{display:block!important}
+ body.paged-on #screen,body.paged-on #printroot{display:none!important}
+ body.paged-on #pagedpreview{display:block!important;background:#fff;padding:0}
+ body.paged-on #pagedpreview .pagedjs_page{box-shadow:none;margin:0}
+ .print-only .ppage{break-after:page;page-break-after:always}
+ .print-only .ppage:last-child{break-after:auto;page-break-after:auto}
+ .print-only .ptitle{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #222;padding-bottom:6px;margin-bottom:10px}
+ .print-only .ptitle .pt-l b{font-size:15px}.print-only .ptitle .pt-l span{display:block;font-size:10px;color:#444;margin-top:2px}
+ .print-only .ptitle .pt-r{font-size:11px;font-weight:700;color:#333;white-space:nowrap;padding-left:12px}
+ .print-only .pimg{text-align:center;margin-bottom:10px}
+ .print-only .pimg-inner{position:relative;display:inline-block;max-width:100%}
+ .print-only .pimg-inner img{display:block;max-width:100%;max-height:150mm;height:auto;border:1px solid #ccc}
  .print-only .pmk{position:absolute;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:#fff;border:1.6px solid #c00;color:#c00;font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;line-height:1}
- .print-only table{width:100%;border-collapse:collapse;font-size:10px}
- .print-only th,.print-only td{border:1px solid #999;padding:2px 5px;text-align:left;vertical-align:top}
- .print-only thead th{background:#eee}.print-only thead{display:table-header-group}
- .print-only td.c,.print-only th.c{text-align:center}
- .print-only tr.lg td{background:#eef0f2;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:.04em}
- .print-only tr{break-inside:avoid}
+ .print-only table.pleg{width:100%;border-collapse:collapse;font-size:10px}
+ .print-only table.pleg th,.print-only table.pleg td{border:1px solid #999;padding:2px 5px;text-align:left;vertical-align:top}
+ .print-only table.pleg thead th{background:#eee}.print-only table.pleg thead{display:table-header-group}
+ .print-only table.pleg td.c,.print-only table.pleg th.c{text-align:center}
+ .print-only table.pleg tr.lg td{background:#eef0f2;font-weight:700;text-transform:uppercase;font-size:9px}
+ .print-only table.pleg tr{break-inside:avoid}
 }`;
 const ARTIUS_HTML_JS = `
 var D=window.__DATA__||{groups:[],images:[],meta:{},colors:{}};
@@ -592,23 +599,28 @@ function initEvents(){
  ib.addEventListener("mouseout",function(e){var t=e.target.closest?e.target.closest(".grp-row"):null;if(t){st.hov=null;applyStates();}});}
  var tb=document.getElementById("invtabs");if(tb)tb.addEventListener("click",function(e){var b=e.target.closest?e.target.closest(".sheet-tab"):null;if(b){st.gf=b.getAttribute("data-gf");renderTabs();renderRows();}});
  bindSearch();
- var bp=document.getElementById("btnprint");if(bp)bp.addEventListener("click",function(){window.print();});
+ var bp=document.getElementById("btnprint");if(bp)bp.addEventListener("click",function(){doPrint();});window.addEventListener("afterprint",function(){document.body.classList.remove("paged-on");var pp=document.getElementById("pagedpreview");if(pp)pp.innerHTML="";});
  window.addEventListener("keydown",function(e){if(e.key==="Escape")deselect();});
  var rt=null;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(renderMarkers,120);});
 }
-function buildPrint(){var root=document.getElementById("printroot");if(!root)return;var m=D.meta||{};function head(sub){var meta=[m.client?("CĐT: "+m.client):"",m.location||"",m.author?("Người bóc: "+m.author):"",m.date||""].filter(function(x){return x;}).map(esc).join("   \u00b7   ");return '<div class="ptitle"><div class="pt-l"><b>'+esc(m.project||"Bảng bóc tách vật liệu")+'</b><span>'+meta+'</span></div><div class="pt-r">'+esc(sub)+'</div></div>';}
+var PAGED_CSS='@page{size:A4 landscape;margin:14mm 12mm 15mm;@top-left{content:string(rhtitle);font-size:9px;color:#666}@top-right{content:string(rhmeta);font-size:9px;color:#666}@bottom-center{content:"Trang " counter(page) " / " counter(pages);font-size:9px;color:#666}}.rh-title{string-set:rhtitle content(text)}.rh-meta{string-set:rhmeta content(text)}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#000;background:#fff}.ppage{break-after:page}.ppage:last-child{break-after:auto}.ptitle{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #222;padding-bottom:6px;margin-bottom:10px}.ptitle .pt-l b{font-size:15px}.ptitle .pt-l span{display:block;font-size:10px;color:#444;margin-top:2px}.ptitle .pt-r{font-size:11px;font-weight:700;color:#333}.pimg{text-align:center;margin-bottom:10px}.pimg-inner{position:relative;display:inline-block;max-width:100%}.pimg-inner img{display:block;max-width:100%;max-height:120mm;height:auto;border:1px solid #ccc}.pmk{position:absolute;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:#fff;border:1.6px solid #c00;color:#c00;font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;line-height:1}table.pleg{width:100%;border-collapse:collapse;font-size:10px}table.pleg th,table.pleg td{border:1px solid #999;padding:2px 5px;text-align:left;vertical-align:top}table.pleg thead th{background:#eee}table.pleg thead{display:table-header-group}table.pleg td.c,table.pleg th.c{text-align:center}table.pleg tr.lg td{background:#eef0f2;font-weight:700;text-transform:uppercase;font-size:9px}table.pleg tr{break-inside:avoid}';
+function printFlowHtml(){var m=D.meta||{};function head(sub){var meta=[m.client?("CĐT: "+m.client):"",m.location||"",m.author?("Người bóc: "+m.author):"",m.date||""].filter(function(x){return x;}).map(esc).join("   \u00b7   ");return '<div class="ptitle"><div class="pt-l"><b class="rh-title">'+esc(m.project||"Bảng bóc tách vật liệu")+'</b><span class="rh-meta">'+meta+'</span></div><div class="pt-r">'+esc(sub)+'</div></div>';}
 function legRows(pred){var h="";D.groups.forEach(function(g){var gi=g.items.filter(pred);if(!gi.length)return;h+='<tr class="lg"><td colspan="6">'+esc(g.nhom)+'</td></tr>';gi.forEach(function(it){h+='<tr><td class="c">'+it.no+'</td><td>'+esc(it.ma)+'</td><td>'+esc(it.mon)+'</td><td>'+esc(it.vat_lieu)+'</td><td class="c">'+esc(it.sl)+'</td><td>'+esc(it.vi_tri)+'</td></tr>';});});return h;}
-var thead='<thead><tr><th class="c">#</th><th>Mã</th><th>Món</th><th>Vật liệu</th><th class="c">SL</th><th>Vị trí</th></tr></thead>';
+var THEAD='<thead><tr><th class="c">#</th><th>Mã</th><th>Món</th><th>Vật liệu</th><th class="c">SL</th><th>Vị trí</th></tr></thead>';
 var html="",total=imgs.length;
-imgs.forEach(function(im,ix){var onImg=function(it){return it.marks.some(function(mk){return mk.img===im.id;});};var any=false;D.groups.forEach(function(g){if(g.items.some(onImg))any=true;});if(!any)return;var W=1000,H=650;var mk=marksOn(im.id);var pts=mk.map(function(m){return{x:m.cx*W,y:m.cy*H};});var sep=separate(pts,26,W,H,70);var marks="";mk.forEach(function(m,i){marks+='<div class="pmk" style="left:'+(sep[i].x/W*100)+'%;top:'+(sep[i].y/H*100)+'%">'+m.no+'</div>';});html+='<section class="ppage">'+head("Ảnh "+(ix+1)+"/"+total)+'<div class="pbody"><div class="pimg"><div class="pimg-inner"><img src="'+im.src+'">'+marks+'</div></div><div class="pleg"><table>'+thead+'<tbody>'+legRows(onImg)+'</tbody></table></div></div></section>';});
-html+='<section class="ppage psum">'+head("Tổng hợp \u2014 "+items.length+" món")+'<table>'+thead+'<tbody>'+legRows(function(){return true;})+'</tbody></table></section>';
-root.innerHTML=html;}
-function init(){var m=D.meta||{};var t=document.getElementById("expttl");if(t)t.textContent=m.project||"Bảng bóc tách vật liệu";var mm=document.getElementById("expmeta");if(mm)mm.textContent=[m.client?("CĐT: "+m.client):"",m.location||"",m.author?("Người bóc: "+m.author):"",m.date||""].filter(function(x){return x;}).join("   \u00b7   ");renderStrip();renderImage();renderTabs();renderRows();buildPrint();initEvents();}
+imgs.forEach(function(im,ix){var onImg=function(it){return it.marks.some(function(mk){return mk.img===im.id;});};var any=false;D.groups.forEach(function(g){if(g.items.some(onImg))any=true;});if(!any)return;var W=1000,H=650;var mk=marksOn(im.id);var pts=mk.map(function(x){return{x:x.cx*W,y:x.cy*H};});var sep=separate(pts,26,W,H,70);var marks="";mk.forEach(function(x,i){marks+='<div class="pmk" style="left:'+(sep[i].x/W*100)+'%;top:'+(sep[i].y/H*100)+'%">'+x.no+'</div>';});html+='<section class="ppage">'+head("Ảnh "+(ix+1)+"/"+total)+'<div class="pimg"><div class="pimg-inner"><img src="'+im.src+'">'+marks+'</div></div><table class="pleg">'+THEAD+'<tbody>'+legRows(onImg)+'</tbody></table></section>';});
+html+='<section class="ppage psum">'+head("Tổng hợp \u2014 "+items.length+" món")+'<table class="pleg">'+THEAD+'<tbody>'+legRows(function(){return true;})+'</tbody></table></section>';
+return html;}
+function fillPrintRoot(){var r=document.getElementById("printroot");if(r)r.innerHTML=printFlowHtml();}
+function nativePrint(){document.body.classList.remove("paged-on");fillPrintRoot();setTimeout(function(){window.print();},30);}
+function runPaged(){var target=document.getElementById("pagedpreview");if(!target){nativePrint();return;}try{target.innerHTML="";document.body.classList.add("paged-on");var prev=new window.Paged.Previewer();prev.preview(printFlowHtml(),[{"artius-paged.css":PAGED_CSS}],target).then(function(){setTimeout(function(){window.print();},120);}).catch(function(){document.body.classList.remove("paged-on");nativePrint();});}catch(e){document.body.classList.remove("paged-on");nativePrint();}}
+function doPrint(){if(window.__HAS_PAGED__&&window.Paged&&window.Paged.Previewer){runPaged();}else{nativePrint();}}
+function init(){var m=D.meta||{};var t=document.getElementById("expttl");if(t)t.textContent=m.project||"Bảng bóc tách vật liệu";var mm=document.getElementById("expmeta");if(mm)mm.textContent=[m.client?("CĐT: "+m.client):"",m.location||"",m.author?("Người bóc: "+m.author):"",m.date||""].filter(function(x){return x;}).join("   \u00b7   ");renderStrip();renderImage();renderTabs();renderRows();fillPrintRoot();initEvents();}
 init();`;
-function buildInteractiveHtml(payload, appCss) {
+function buildInteractiveHtml(payload, appCss, pagedB64) {
   const DATA = JSON.stringify(payload).replace(/</g, "\\u003c");
   const head = '<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ARTIUS · Spec ảnh</title><style>' + (appCss || "") + ARTIUS_HTML_SUPP + '</style></head>';
-  const shell = '<div class="expbar"><div><div class="expttl" id="expttl"></div><div class="expmeta" id="expmeta"></div></div><button class="btn" id="btnprint">In / PDF</button></div>'
+  const shell = '<div id="screen"><div class="expbar"><div><div class="expttl" id="expttl"></div><div class="expmeta" id="expmeta"></div></div><span class="sp"></span><button class="btn" id="btnprint">In / Xuất PDF</button></div>'
     + '<div class="ax" id="ax">'
     + '<section class="pane pane-image"><div class="pane-body"><div>'
     + '<div class="block-head"><span class="section-label">02 · Ảnh phối cảnh</span></div>'
@@ -620,10 +632,15 @@ function buildInteractiveHtml(payload, appCss) {
     + '<div class="tbl-scroll"><div class="grp-caption"><span class="grp-cap-sel"></span><span class="grp-cap-stt">#</span><span class="grp-cap-thumb">Ảnh</span><span class="grp-cap-code">Mã</span><span class="grp-cap-main">Món / Vật liệu</span><span class="grp-cap-sl">SL</span><span class="grp-cap-select">Tin cậy</span><span class="grp-cap-act"></span></div>'
     + '<div class="grp-wrap" id="invbody"></div></div>'
     + '</div></div></section>'
-    + '</div>'
-    + '<div class="print-only" id="printroot"></div>';
+    + '</div></div>'
+    + '<div class="print-only" id="printroot"></div>'
+    + '<div id="pagedpreview"></div>';
+  const pagedLoader = pagedB64
+    ? '<scr' + 'ipt>window.PagedConfig={auto:false};try{(0,eval)(decodeURIComponent(escape(atob("' + pagedB64 + '"))));window.__HAS_PAGED__=true;}catch(e){window.__HAS_PAGED__=false;}</scr' + 'ipt>'
+    : '<scr' + 'ipt>window.__HAS_PAGED__=false;</scr' + 'ipt>';
   const body = '<body>' + shell
     + '<scr' + 'ipt>window.__DATA__=' + DATA + ';</scr' + 'ipt>'
+    + pagedLoader
     + '<scr' + 'ipt>' + ARTIUS_HTML_JS + '</scr' + 'ipt></body></html>';
   return head + body;
 }
@@ -2017,7 +2034,7 @@ function InventoryExtractor() {
   }
 
   // Kết xuất HTML tương tác (hướng A): 1 file tự chứa, bấm ký hiệu -> chi tiết; chuyển ảnh bằng tab; In/PDF.
-  function exportHtml() {
+  async function exportHtml() {
     if (!rows.length) { setStatus("Chưa có dữ liệu để xuất HTML."); return; }
     const dispNo = buildDisplayNo(rows);
     const groups = groupRowsByNhom(rows).map((g) => ({
@@ -2046,13 +2063,26 @@ function InventoryExtractor() {
       return { id: String(im.id), idx: i + 1, name: im.fileName || ("Ảnh " + (i + 1)), src };
     });
     const payload = { meta: { project: projectName, client, location, author, date: dateStr, generatedAt: new Date().toISOString() }, colors: GROUP_COLOR, images: imgList, groups };
+    // B2: tải Paged.js (polyfill CSS Paged Media) rồi NHÚNG vào file -> PDF phân trang chuẩn, chạy offline.
+    setStatus("Đang chuẩn bị HTML + Paged.js cho bản in…");
+    let pagedB64 = "";
+    const cdns = [
+      "https://unpkg.com/pagedjs@0.4.3/dist/paged.polyfill.min.js",
+      "https://cdn.jsdelivr.net/npm/pagedjs@0.4.3/dist/paged.polyfill.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/pagedjs/0.4.3/paged.polyfill.min.js",
+    ];
+    for (const u of cdns) {
+      try { const r = await fetch(u); if (r.ok) { const txt = await r.text(); if (txt && txt.length > 50000) { pagedB64 = btoa(unescape(encodeURIComponent(txt))); break; } } } catch (e) { /* thử CDN kế */ }
+    }
     try {
-      const html = buildInteractiveHtml(payload, css + cssExtra);
+      const html = buildInteractiveHtml(payload, css + cssExtra, pagedB64);
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a"); a.href = url; a.download = safeName() + "-spec-tuong-tac.html"; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1500);
-      setStatus("Đã xuất HTML tương tác — mở bằng trình duyệt, bấm ký hiệu để xem chi tiết. Bấm 'In / PDF' trong file để in kèm legend.");
+      setStatus(pagedB64
+        ? "Đã xuất HTML — bấm 'In / Xuất PDF' trong file để tạo PDF phân trang chuẩn (số trang, header lặp; Paged.js đã nhúng, chạy offline)."
+        : "Đã xuất HTML — KHÔNG tải được Paged.js (mạng?), nút In/PDF dùng chế độ in cơ bản (B1, chưa có số trang). Xuất lại khi có mạng để nhúng Paged.js.");
     } catch (e) { setStatus("Không tạo được file HTML trong môi trường này."); }
   }
 
