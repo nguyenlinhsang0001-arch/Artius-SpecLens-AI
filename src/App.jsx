@@ -508,6 +508,125 @@ function makeExportCrop(imgEl, box, maxPx = 440) {
 // Bỏ tiền tố "data:image/...;base64," -> chỉ còn base64 (để gửi cho API).
 function b64of(dataUrl) { const i = String(dataUrl || "").indexOf(","); return i >= 0 ? dataUrl.slice(i + 1) : dataUrl; }
 
+/* ===================== KẾT XUẤT HTML TƯƠNG TÁC (hướng A) =====================
+   Một file .html tự chứa: nhúng ảnh (dataURL) + dữ liệu bảng + crop từng món.
+   Mở offline bằng trình duyệt: bấm/rê ký hiệu -> popover chi tiết; danh sách đồng bộ 2 chiều;
+   tìm kiếm, lọc nhóm, bật/tắt nhãn, chuyển ảnh bằng tab, và In/PDF (kèm legend — nền tảng cho hướng B).
+   payload = { meta, images:[{id,idx,name,src}], groups:[{nhom, items:[{id,no,ma,mon,vat_lieu,sl,tin,vi_tri,ghi_chu,crop,marks:[{img,x,y}]}]}] } */
+const ARTIUS_HTML_CSS = `
+:root{--bg:#0b0f17;--panel:#111827;--line:rgba(255,255,255,.09);--tx:#e7edf5;--tx2:#c4d0de;--mut:#8a97a8;--ac:#7fb0d8;--ac2:#7fd8ab;--red:#e01e1e}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px}
+.wrap{display:flex;flex-direction:column;height:100vh}
+header{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.title{font-weight:700;font-size:15px}.title small{color:var(--mut);font-weight:500;margin-left:8px}
+.meta{color:var(--mut);font-size:12px;margin-top:2px}
+.tools{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tools input[type=search]{background:#0d1422;border:1px solid var(--line);border-radius:8px;color:var(--tx);padding:7px 10px;width:210px;font-size:13px;outline:none}
+.btn{background:#18202f;border:1px solid var(--line);color:var(--tx2);border-radius:8px;padding:7px 11px;font-size:12.5px;cursor:pointer}
+.btn:hover{border-color:var(--ac)}.btn.on{background:rgba(127,216,171,.14);border-color:var(--ac2);color:#cfeede}
+.gf{display:flex;gap:6px;flex-wrap:wrap}
+.gf button{background:#131a2a;border:1px solid var(--line);color:var(--tx2);border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer}
+.gf button.on{background:var(--ac);color:#08131f;border-color:var(--ac)}
+.main{flex:1;display:flex;min-height:0}
+.stage{flex:1 1 62%;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--line)}
+.tabs{display:flex;gap:6px;padding:10px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.tab{background:#131a2a;border:1px solid var(--line);color:var(--tx2);border-radius:8px;padding:6px 12px;font-size:12.5px;cursor:pointer}
+.tab.on{background:var(--ac);color:#08131f;border-color:var(--ac)}
+.canvas-scroll{flex:1;overflow:auto;padding:14px;display:flex;align-items:flex-start;justify-content:center}
+.canvas{position:relative;display:inline-block;max-width:100%}
+.canvas img{display:block;max-width:100%;height:auto;border-radius:8px}
+.mk{position:absolute;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:2px solid var(--red);color:var(--red);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.5);opacity:.9;line-height:1}
+.mk.dim{opacity:.22}.mk.sel,.mk:hover{outline:3px solid var(--ac2);outline-offset:1px;opacity:1;z-index:5}.mk.nolabel{color:transparent}
+.side{flex:1 1 38%;min-width:280px;overflow:auto;padding:6px 0}
+.gh{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);padding:11px 14px 5px;position:sticky;top:0;background:var(--bg)}
+.it{display:flex;gap:10px;align-items:center;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer}
+.it:hover{background:rgba(255,255,255,.03)}.it.sel{background:rgba(127,176,216,.12)}
+.it .no{flex:0 0 24px;height:24px;border-radius:50%;background:#0d1422;border:1px solid var(--line);color:var(--ac);font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center}
+.it img,.it .ph{flex:0 0 44px;width:44px;height:44px;border-radius:7px;object-fit:cover;border:1px solid var(--line);background:#0d1422}
+.it .info{min-width:0;flex:1}.it .nm{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .sub{font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .code{flex:0 0 auto;font-size:11px;color:var(--tx2);background:#0d1422;border:1px solid var(--line);border-radius:6px;padding:2px 6px}
+.it .sl{flex:0 0 auto;font-size:11px;color:var(--mut)}
+.hidden{display:none!important}
+.pop{position:fixed;z-index:50;width:250px;background:#0f1725;border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.6);padding:12px;font-size:12.5px}
+.pop img{width:100%;height:150px;object-fit:cover;border-radius:8px;background:#0d1422;margin-bottom:8px}
+.pop .pcode{color:var(--ac);font-weight:700}.pop .pnm{font-weight:700;margin:2px 0 8px}
+.pop .row{display:flex;gap:6px;margin:3px 0}.pop .k{color:var(--mut);flex:0 0 66px}
+.pop .x{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--mut);font-size:13px}
+.print-only{display:none}
+@media print{
+ @page{size:A4 landscape;margin:10mm}
+ html,body{background:#fff!important;color:#000!important}
+ .wrap{display:none!important}
+ .print-only{display:block!important}
+ .ppage{break-after:page;page-break-after:always}
+ .ppage:last-child{break-after:auto;page-break-after:auto}
+ .ptitle{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #222;padding-bottom:6px;margin-bottom:10px}
+ .ptitle .pt-l b{font-size:15px}.ptitle .pt-l span{display:block;font-size:10px;color:#444;margin-top:2px}
+ .ptitle .pt-r{font-size:11px;color:#333;font-weight:700;white-space:nowrap;padding-left:12px}
+ .pbody{display:flex;gap:12px;align-items:flex-start}
+ .pimg{flex:1 1 57%;min-width:0;text-align:center}
+ .pimg-inner{position:relative;display:inline-block;max-width:100%}
+ .pimg-inner img{display:block;max-width:100%;max-height:168mm;height:auto;border:1px solid #ccc}
+ .pleg{flex:1 1 43%;min-width:0}
+ .print-only .mk{position:absolute;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:#fff;border:1.6px solid #c00;color:#c00;font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;box-shadow:none;opacity:1;outline:none;line-height:1}
+ .print-only table{width:100%;border-collapse:collapse;font-size:10px}
+ .print-only th,.print-only td{border:1px solid #999;padding:2px 5px;text-align:left;vertical-align:top}
+ .print-only thead th{background:#eee}
+ .print-only td.c,.print-only th.c{text-align:center}
+ .print-only tr.lg td{background:#eef0f2;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:.04em}
+ .print-only tr{break-inside:avoid}
+ .print-only thead{display:table-header-group}
+ .psum table{margin-top:4px}
+}`;
+const ARTIUS_HTML_JS = `
+var D=window.__DATA__||{groups:[],images:[],meta:{}};
+var items=[];D.groups.forEach(function(g){g.items.forEach(function(it){it._nhom=g.nhom;items.push(it);});});
+var byId={};items.forEach(function(it){byId[it.id]=it;});
+var imgs=D.images||[];var curImg=imgs.length?imgs[0].id:null;
+var st={q:"",gf:"__all",labels:true,sel:null};
+function esc(s){s=(s==null?"":String(s));return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function mt(it){if(st.gf!=="__all"&&it._nhom!==st.gf)return false;if(!st.q)return true;var s=(it.no+" "+it.ma+" "+it.mon+" "+it.vat_lieu+" "+it.vi_tri).toLowerCase();return s.indexOf(st.q)>=0;}
+function tabs(){var t=document.getElementById("tabs");if(imgs.length<2){t.style.display="none";return;}t.innerHTML=imgs.map(function(im){return '<button class="tab'+(im.id===curImg?" on":"")+'" data-img="'+im.id+'">'+esc(im.name)+'</button>';}).join("");}
+function stage(){var im=null,i;for(i=0;i<imgs.length;i++){if(imgs[i].id===curImg)im=imgs[i];}var c=document.getElementById("canvas");if(!im){c.innerHTML="";return;}var h='<img src="'+im.src+'" alt="">';items.forEach(function(it){it.marks.forEach(function(m){if(m.img!==curImg)return;var vis=mt(it);h+='<div class="mk'+(st.labels?"":" nolabel")+(it.id===st.sel?" sel":"")+(vis?"":" dim")+'" data-id="'+it.id+'" style="left:'+(m.x*100)+'%;top:'+(m.y*100)+'%">'+it.no+'</div>';});});c.innerHTML=h;}
+function list(){var w=document.getElementById("list");var h="";D.groups.forEach(function(g){var vis=g.items.filter(mt);if(!vis.length)return;h+='<div class="gh">'+esc(g.nhom||"Khác")+' &middot; '+vis.length+'</div>';vis.forEach(function(it){var th=it.crop?'<img src="'+it.crop+'">':'<div class="ph"></div>';h+='<div class="it'+(it.id===st.sel?" sel":"")+'" data-id="'+it.id+'" id="it-'+it.id+'"><div class="no">'+it.no+'</div>'+th+'<div class="info"><div class="nm">'+esc(it.mon||"(chưa đặt tên)")+'</div><div class="sub">'+esc(it.vat_lieu||"")+'</div></div><div class="code">'+esc(it.ma||"—")+'</div><div class="sl">x'+it.sl+'</div></div>';});});w.innerHTML=h||'<div class="gh">Không có kết quả</div>';}
+function pop(it){var p=document.getElementById("pop");function rw(k,v){if(!v&&v!==0)return "";return '<div class="row"><span class="k">'+k+'</span><span>'+esc(v)+'</span></div>';}p.innerHTML=(it.crop?'<img src="'+it.crop+'">':'')+'<div class="pcode">'+esc(it.ma||"—")+' &middot; <span style="color:#8a97a8">'+esc(it._nhom||"")+'</span></div><div class="pnm">'+esc(it.mon||"(chưa đặt tên)")+'</div>'+rw("Vật liệu",it.vat_lieu)+rw("Số lượng","x"+it.sl)+rw("Tin cậy",it.tin)+rw("Vị trí",it.vi_tri)+rw("Ghi chú",it.ghi_chu)+'<div class="x" id="popx">✕</div>';p.classList.remove("hidden");var mk=document.querySelector('.mk[data-id="'+it.id+'"]');var px=window.innerWidth/2-125,py=120;if(mk){var r=mk.getBoundingClientRect();px=r.right+12;py=r.top;if(px+250>window.innerWidth)px=r.left-262;if(px<10)px=10;if(py+250>window.innerHeight)py=window.innerHeight-260;if(py<10)py=10;}p.style.left=px+"px";p.style.top=py+"px";document.getElementById("popx").onclick=closep;}
+function closep(){document.getElementById("pop").classList.add("hidden");st.sel=null;stage();list();}
+function pick(id){var it=byId[id];if(!it)return;var here=it.marks.some(function(m){return m.img===curImg;});if(!here&&it.marks.length){curImg=it.marks[0].img;tabs();}st.sel=id;stage();list();var el=document.getElementById("it-"+id);if(el&&el.scrollIntoView)el.scrollIntoView({block:"center",behavior:"smooth"});pop(it);}
+function buildPrint(){var root=document.getElementById("printroot");if(!root)return;var m=D.meta||{};function head(sub){var meta=[m.client?("CĐT: "+m.client):"",m.location||"",m.author?("Người bóc: "+m.author):"",m.date||""].filter(function(x){return x;}).map(esc).join("   ·   ");return '<div class="ptitle"><div class="pt-l"><b>'+esc(m.project||"Bảng bóc tách vật liệu")+'</b><span>'+meta+'</span></div><div class="pt-r">'+esc(sub)+'</div></div>';}
+function legRows(pred){var h="";D.groups.forEach(function(g){var gi=g.items.filter(pred);if(!gi.length)return;h+='<tr class="lg"><td colspan="6">'+esc(g.nhom)+'</td></tr>';gi.forEach(function(it){h+='<tr><td class="c">'+it.no+'</td><td>'+esc(it.ma)+'</td><td>'+esc(it.mon)+'</td><td>'+esc(it.vat_lieu)+'</td><td class="c">'+it.sl+'</td><td>'+esc(it.vi_tri)+'</td></tr>';});});return h;}
+var thead='<thead><tr><th class="c">#</th><th>Mã</th><th>Món</th><th>Vật liệu</th><th class="c">SL</th><th>Vị trí</th></tr></thead>';
+var html="",total=imgs.length;
+imgs.forEach(function(im,ix){var onImg=function(it){return it.marks.some(function(mk){return mk.img===im.id;});};var any=false;D.groups.forEach(function(g){if(g.items.some(onImg))any=true;});if(!any)return;var marks="";items.forEach(function(it){it.marks.forEach(function(mk){if(mk.img!==im.id)return;marks+='<div class="mk" style="left:'+(mk.x*100)+'%;top:'+(mk.y*100)+'%">'+it.no+'</div>';});});html+='<section class="ppage">'+head("Ảnh "+(ix+1)+"/"+total)+'<div class="pbody"><div class="pimg"><div class="pimg-inner"><img src="'+im.src+'">'+marks+'</div></div><div class="pleg"><table>'+thead+'<tbody>'+legRows(onImg)+'</tbody></table></div></div></section>';});
+html+='<section class="ppage psum">'+head("Tổng hợp — "+items.length+" món")+'<table>'+thead+'<tbody>'+legRows(function(){return true;})+'</tbody></table></section>';
+root.innerHTML=html;}
+function gfbar(){var seen={},order=[];D.groups.forEach(function(g){if(!seen[g.nhom]){seen[g.nhom]=1;order.push(g.nhom);}});var el=document.getElementById("gf");var h='<button class="on" data-gf="__all">Tất cả</button>';order.forEach(function(n){h+='<button data-gf="'+esc(n)+'">'+esc(n)+'</button>';});el.innerHTML=h;}
+function init(){var m=D.meta||{};document.getElementById("ttl").innerHTML=esc(m.project||"Bảng bóc tách vật liệu")+' <small>ARTIUS · SpecLens</small>';var mp=[];if(m.client)mp.push("CĐT: "+m.client);if(m.location)mp.push(m.location);if(m.author)mp.push("Người bóc: "+m.author);if(m.date)mp.push(m.date);document.getElementById("mta").textContent=mp.join("   ·   ");gfbar();tabs();stage();list();buildPrint();
+document.getElementById("canvas").addEventListener("click",function(e){var t=e.target.closest?e.target.closest(".mk"):null;if(t)pick(t.getAttribute("data-id"));});
+document.getElementById("list").addEventListener("click",function(e){var t=e.target.closest?e.target.closest(".it"):null;if(t)pick(t.getAttribute("data-id"));});
+document.getElementById("tabs").addEventListener("click",function(e){var t=e.target.closest?e.target.closest(".tab"):null;if(t){curImg=t.getAttribute("data-img");tabs();stage();}});
+document.getElementById("q").addEventListener("input",function(e){st.q=(e.target.value||"").toLowerCase().trim();stage();list();});
+document.getElementById("gf").addEventListener("click",function(e){var b=e.target.closest?e.target.closest("button"):null;if(!b)return;st.gf=b.getAttribute("data-gf");var ch=this.children,i;for(i=0;i<ch.length;i++)ch[i].classList.toggle("on",ch[i]===b);stage();list();});
+document.getElementById("btnlabels").addEventListener("click",function(){st.labels=!st.labels;this.classList.toggle("on",st.labels);stage();});
+document.getElementById("btnprint").addEventListener("click",function(){window.print();});
+window.addEventListener("keydown",function(e){if(e.key==="Escape")closep();});}
+init();`;
+function buildInteractiveHtml(payload) {
+  const DATA = JSON.stringify(payload).replace(/</g, "\\u003c");
+  const head = '<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ARTIUS · Spec ảnh tương tác</title><style>' + ARTIUS_HTML_CSS + '</style></head>';
+  const body = '<body><div class="wrap">'
+    + '<header><div><div class="title" id="ttl"></div><div class="meta" id="mta"></div></div>'
+    + '<div class="tools"><div class="gf" id="gf"></div><input type="search" id="q" placeholder="Tìm mã, món, vật liệu…"><button class="btn on" id="btnlabels">Nhãn số</button><button class="btn" id="btnprint">In / PDF</button></div></header>'
+    + '<div class="main"><section class="stage"><div class="tabs" id="tabs"></div><div class="canvas-scroll"><div class="canvas" id="canvas"></div></div></section>'
+    + '<aside class="side" id="list"></aside></div>'
+    + '<div class="pop hidden" id="pop"></div></div>'
+    + '<div class="print-only" id="printroot"></div>'
+    + '<scr' + 'ipt>window.__DATA__=' + DATA + ';</scr' + 'ipt>'
+    + '<scr' + 'ipt>' + ARTIUS_HTML_JS + '</scr' + 'ipt></body></html>';
+  return head + body;
+}
+
+
 /* ===================== TẦNG C: gom nhóm bằng thị giác (montage clustering) =====================
    Bài toán: Gemini (B) khoanh TỪNG cá thể -> nhiều ghế giống nhau ra nhiều box. Nếu đọc mỗi crop
    ĐỘC LẬP thì Claude mô tả lệch nhau ("Ghế armchair" vs "Armchair (ghế bành đơn)") -> không gộp được.
@@ -943,6 +1062,7 @@ const cssExtra = `
 .tbl-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; padding-bottom:44px; }
 .tbl-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:2px 0 12px; padding-top:12px; border-top:1px solid var(--line); }
 .tbl-actions .spacer { flex:1; }
+.tbl-actions .btn, .tbl-actions .chip-toggle { height:30px; padding:0 12px; font-size:12px; }
 
 @media (max-width: 1080px) {
   .ax2 { height:auto; overflow:visible; }
@@ -1830,7 +1950,7 @@ function InventoryExtractor() {
     flat.forEach((f, i) => {
       const cx = sep[i].x, cy = sep[i].y;
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.25)"; ctx.fill();                 // nền trắng trong suốt 75%
+      ctx.fillStyle = "#ffffff"; ctx.fill();                                // nền trắng
       ctx.lineWidth = Math.max(1.5, r * 0.16); ctx.strokeStyle = "#e01e1e"; ctx.stroke(); // viền đỏ
       ctx.fillStyle = "#e01e1e"; ctx.fillText(String(f.no), cx, cy);        // số đỏ
     });
@@ -1892,6 +2012,46 @@ function InventoryExtractor() {
       const withImg = items.filter((x) => x.image).length;
       setStatus("Đã xuất gói .json (" + items.length + " dòng, " + withImg + " ảnh crop) — gửi file này vào chat để tạo .xlsx có ảnh nhúng.");
     } catch (e) { setStatus("Không tạo được gói .json trong môi trường này."); }
+  }
+
+  // Kết xuất HTML tương tác (hướng A): 1 file tự chứa, bấm ký hiệu -> chi tiết; chuyển ảnh bằng tab; In/PDF.
+  function exportHtml() {
+    if (!rows.length) { setStatus("Chưa có dữ liệu để xuất HTML."); return; }
+    const dispNo = buildDisplayNo(rows);
+    const groups = groupRowsByNhom(rows).map((g) => ({
+      nhom: g.nhom,
+      items: g.rows.map((r) => {
+        const b0 = (r.instances || [])[0];
+        let crop = r.thumb || null;
+        if (b0 && elReady(b0.imgId)) { const c = makeExportCrop(getEl(b0.imgId), b0, 300); if (c && c.data) crop = c.data; }
+        return {
+          id: String(r.id), no: dispNo.get(r.id) || 0, ma: r.ma || "", mon: r.mon || "", vat_lieu: r.vat_lieu || "",
+          sl: qtyOf(r), tin: r.do_tin_cay || "", vi_tri: r.vi_tri || "", ghi_chu: r.ghi_chu || "", crop,
+          marks: (r.instances || []).map((b) => ({ img: String(b.imgId), x: (b.x1 + b.x2) / 2, y: (b.y1 + b.y2) / 2 })),
+        };
+      }),
+    }));
+    const imgList = images.map((im, i) => {
+      let src = im.preview;
+      if (elReady(im.id)) {
+        try {
+          const el = getEl(im.id), nw = el.naturalWidth, nh = el.naturalHeight, sc = Math.min(1, 1600 / Math.max(nw, nh));
+          const w = Math.max(1, Math.round(nw * sc)), h = Math.max(1, Math.round(nh * sc));
+          const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(el, 0, 0, w, h);
+          src = c.toDataURL("image/jpeg", 0.82);
+        } catch (e) { /* fallback preview */ }
+      }
+      return { id: String(im.id), idx: i + 1, name: im.fileName || ("Ảnh " + (i + 1)), src };
+    });
+    const payload = { meta: { project: projectName, client, location, author, date: dateStr, generatedAt: new Date().toISOString() }, images: imgList, groups };
+    try {
+      const html = buildInteractiveHtml(payload);
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = safeName() + "-spec-tuong-tac.html"; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      setStatus("Đã xuất HTML tương tác — mở bằng trình duyệt, bấm ký hiệu để xem chi tiết. Bấm 'In / PDF' trong file để in kèm legend.");
+    } catch (e) { setStatus("Không tạo được file HTML trong môi trường này."); }
   }
 
   const hasRows = rows.length > 0;
@@ -1974,16 +2134,9 @@ function InventoryExtractor() {
           <div>
             <div className="block-head">
               <span className="section-label">02 · Ảnh phối cảnh (nhiều ảnh)</span>
-              {hasImages && <span className="imgcount">{images.length} ảnh · đã phân tích {analyzedN}</span>}
             </div>
             <div className="panel">
-              <div className="ctl-row">
-                <input ref={fileRef} type="file" accept="image/*" multiple onChange={onPickFiles} style={{ display: "none" }} />
-                <div className="spacer" />
-                {hasRows && (<button className={"btn btn-ghost" + (markerEdit ? " on" : "")} onClick={toggleEdit}><MapPin size={15} /> {markerEdit ? "Đang chỉnh ký hiệu" : "Thêm ký hiệu"}</button>)}
-                <button className="btn btn-ghost" onClick={analyzeActive} disabled={loading || !activeImage}><MapPin size={15} /> Phân tích ảnh này</button>
-                <button className="btn btn-primary" onClick={analyzeAll} disabled={loading || !hasImages}>{loading && <Loader2 size={15} className="spin" />}{loading ? "Đang phân tích…" : "Phân tích tất cả (" + images.length + ")"}</button>
-              </div>
+              <input ref={fileRef} type="file" accept="image/*" multiple onChange={onPickFiles} style={{ display: "none" }} />
 
               {hasImages && (
                 <div className="imgstrip">
@@ -2099,6 +2252,10 @@ function InventoryExtractor() {
                     </div>
                   )}
                 </div>
+                <div className="spacer" />
+                {hasRows && (<button className={"btn btn-ghost" + (markerEdit ? " on" : "")} onClick={toggleEdit}><MapPin size={15} /> {markerEdit ? "Đang chỉnh ký hiệu" : "Thêm ký hiệu"}</button>)}
+                <button className="btn btn-ghost" onClick={analyzeActive} disabled={loading || !activeImage}><MapPin size={15} /> Phân tích ảnh này</button>
+                <button className="btn btn-primary" onClick={analyzeAll} disabled={loading || !hasImages}>{loading && <Loader2 size={15} className="spin" />}{loading ? "Đang phân tích…" : "Phân tích tất cả (" + images.length + ")"}</button>
               </div>
             </div>
           </div>
@@ -2117,7 +2274,6 @@ function InventoryExtractor() {
             <div className="tbl-head">
             <div className="block-head">
               <span className="section-label">01 · Bảng Inventory & Mã vật liệu</span>
-              {hasRows && <span className="count">{rows.length} món · {totalSyms} ký hiệu</span>}
             </div>
 
             {hasRows && (
@@ -2131,7 +2287,6 @@ function InventoryExtractor() {
                   </button>
                 ))}
                 <div className="tabs-search">
-                  {(q || onlyLow || onlyUnpinned || imgFilter != null || curSheet !== ALL_SHEET) && <span className="filter-note">Hiện {visibleCount}/{rows.length} dòng</span>}
                   <div className="searchbox">
                     <Search width={15} height={15} />
                     <input placeholder="Tìm theo mã, món, vật liệu, vị trí…" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -2170,6 +2325,7 @@ function InventoryExtractor() {
                 <span className="dotc" style={{ background: "var(--ac)" }} /> Chưa gắn KH{unpinnedN ? " (" + unpinnedN + ")" : ""}
               </button>
               <button className="btn btn-ghost" onClick={exportExcel} disabled={!hasRows}><Download size={15} /> Xuất Excel (bảng)</button>
+              <button className="btn btn-ghost" onClick={exportHtml} disabled={!hasRows || !hasImages} title="Xuất file HTML tương tác: bấm ký hiệu để xem chi tiết, chuyển ảnh bằng tab, In/PDF kèm legend"><ImageDown size={15} /> Xuất HTML</button>
             </div>
 
             </div>{/* /tbl-head */}
