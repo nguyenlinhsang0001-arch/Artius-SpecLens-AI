@@ -763,7 +763,7 @@ CHỈ trả về JSON (không markdown, không giải thích), dạng:
     const res = await fetch("/api/analyze", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6", max_tokens: 1200,
+        model: "claude-sonnet-5", max_tokens: 1200,
         messages: [{ role: "user", content: [
           { type: "image", source: { type: "base64", media_type: "image/jpeg", data: montageB64 } },
           { type: "text", text: prompt },
@@ -1497,7 +1497,7 @@ function InventoryExtractor() {
       res = await fetch("/api/analyze", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6", max_tokens: 1000,
+          model: "claude-sonnet-5", max_tokens: 1000,
           messages: [{ role: "user", content: [
             { type: "image", source: { type: "base64", media_type: pic.media_type, data: pic.data } },
             { type: "text", text: PROMPT },
@@ -1537,7 +1537,7 @@ function InventoryExtractor() {
     const res = await fetch("/api/analyze", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6", max_tokens: 400,
+        model: "claude-sonnet-5", max_tokens: 400,
         messages: [{ role: "user", content: [
           { type: "image", source: { type: "base64", media_type: "image/jpeg", data: cropB64 } },
           { type: "text", text: promptText },
@@ -1557,7 +1557,7 @@ function InventoryExtractor() {
     const res = await fetch("/api/analyze", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6", max_tokens: 1000,
+        model: "claude-sonnet-5", max_tokens: 1000,
         messages: [{ role: "user", content: [
           { type: "image", source: { type: "base64", media_type: pic.media_type, data: pic.data } },
           { type: "text", text: SURFACE_PROMPT },
