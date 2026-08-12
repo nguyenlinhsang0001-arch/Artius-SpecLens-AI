@@ -786,6 +786,138 @@ async function mapLimit(arr, limit, fn) {
   return out;
 }
 
+/* ===================== GỘP MÃ TƯƠNG TỰ (Hướng C: text lọc ứng viên -> Sonnet xác nhận) =====================
+   Vấn đề: mergeKey gộp EXACT nên 2 vật giống nhau nhưng mô tả lệch 1 token vẫn ra 2 mã.
+   Giải pháp: (1) lọc ứng viên bằng độ trùng token (rẻ, offline, recall cao),
+              (2) dựng contact sheet crop đại diện rồi để Sonnet phán "có CÙNG sản phẩm không" (chính xác). */
+
+// Tập token (bỏ dấu, hạ chữ) của 1 chuỗi.
+function tokenSet(s) {
+  return new Set(stripVN(s).replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean));
+}
+// Jaccard giữa 2 tập token: |giao| / |hợp|. 0..1.
+function jaccard(a, b) {
+  if (!a.size && !b.size) return 1;
+  if (!a.size || !b.size) return 0;
+  let inter = 0; a.forEach((t) => { if (b.has(t)) inter++; });
+  return inter / (a.size + b.size - inter);
+}
+
+// Ngưỡng lọc ứng viên (RỘNG có chủ đích — Sonnet mới là bộ lọc chính xác cuối).
+const SIMILAR_MON = 0.5;     // độ trùng token TÊN MÓN tối thiểu
+const SIMILAR_MAT = 0.34;    // hoặc: tên gần + vật liệu/finish trùng kha khá
+// 2 dòng có "nghi giống" để đưa vào cụm ứng viên (đã cùng prefix trước khi gọi).
+function pairCandidate(a, b) {
+  const ma = tokenSet(a.mon), mb = tokenSet(b.mon);
+  const sMon = jaccard(ma, mb);
+  const sMat = jaccard(tokenSet(a.vat_lieu), tokenSet(b.vat_lieu));
+  // Chốt an toàn: tên RẤT NGẮN (1 token) dễ gộp nhầm ("đèn thả" vs "đèn tường" đều có "đèn")
+  // -> yêu cầu chặt hơn: gần như trùng tên VÀ vật liệu tương đồng.
+  const shortName = ma.size <= 1 || mb.size <= 1;
+  if (shortName) return sMon >= 0.75 && sMat >= 0.5;
+  // Bình thường: tên trùng đủ cao, HOẶC tên khá gần + finish trùng kha khá.
+  return sMon >= SIMILAR_MON || (sMon >= 0.34 && sMat >= SIMILAR_MAT);
+}
+
+// Gom các dòng CÙNG prefix mà pairCandidate thành cụm (union-find). Trả [[idx,...] (>=2 phần tử)].
+function candidateClusters(rows) {
+  const n = rows.length;
+  const parent = Array.from({ length: n }, (_, i) => i);
+  const find = (x) => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+  const union = (x, y) => { const rx = find(x), ry = find(y); if (rx !== ry) parent[rx] = ry; };
+  // Chỉ xét dòng đã có mã hợp lệ (đủ căn cứ) & cùng prefix.
+  const pfxOf = (r) => String((r.ma && r.ma.split("-")[0]) || r.prefix || "").toUpperCase().replace(/[^A-Z]/g, "");
+  for (let i = 0; i < n; i++) {
+    if (!VALID_PREFIX.has(pfxOf(rows[i]))) continue;
+    for (let j = i + 1; j < n; j++) {
+      if (pfxOf(rows[i]) !== pfxOf(rows[j])) continue;
+      if (pairCandidate(rows[i], rows[j])) union(i, j);
+    }
+  }
+  const groups = new Map();
+  for (let i = 0; i < n; i++) {
+    if (!VALID_PREFIX.has(pfxOf(rows[i]))) continue;
+    const r = find(i);
+    if (!groups.has(r)) groups.set(r, []);
+    groups.get(r).push(i);
+  }
+  return Array.from(groups.values()).filter((g) => g.length >= 2);
+}
+
+// Dựng contact sheet từ danh sách crop (dataURL) — xuyên ảnh. Async vì phải load ảnh. Trả dataURL jpeg.
+function buildMontageFromCrops(cropUrls, cell = 240, pad = 8, maxEdge = 2200) {
+  return new Promise((resolve) => {
+    try {
+      const n = cropUrls.length;
+      if (!n) return resolve(null);
+      const imgs = cropUrls.map((u) => { const im = new Image(); im.src = u; return im; });
+      let pending = imgs.length;
+      const done = () => {
+        try {
+          const cols = Math.ceil(Math.sqrt(n)), rowsN = Math.ceil(n / cols);
+          let cW = cell, cH = cell;
+          let W = cols * cW + (cols + 1) * pad, H = rowsN * cH + (rowsN + 1) * pad;
+          const sc = Math.min(1, maxEdge / Math.max(W, H));
+          if (sc < 1) { cW = Math.max(120, Math.floor(cW * sc)); cH = cW; W = cols * cW + (cols + 1) * pad; H = rowsN * cH + (rowsN + 1) * pad; }
+          const c = document.createElement("canvas"); c.width = W; c.height = H;
+          const ctx = c.getContext("2d");
+          ctx.fillStyle = "#0d1119"; ctx.fillRect(0, 0, W, H);
+          for (let i = 0; i < n; i++) {
+            const col = i % cols, row = Math.floor(i / cols);
+            const x = pad + col * (cW + pad), y = pad + row * (cH + pad);
+            ctx.fillStyle = "#0d1119"; ctx.fillRect(x, y, cW, cH);
+            const im = imgs[i];
+            if (im && im.naturalWidth) {
+              const scale = Math.min(cW / im.naturalWidth, cH / im.naturalHeight), dw = im.naturalWidth * scale, dh = im.naturalHeight * scale;
+              ctx.drawImage(im, x + (cW - dw) / 2, y + (cH - dh) / 2, dw, dh);
+            }
+            const label = String(i + 1);
+            ctx.font = "bold 18px sans-serif";
+            const tw = ctx.measureText(label).width;
+            ctx.fillStyle = "rgba(0,0,0,0.78)"; ctx.fillRect(x + 3, y + 3, tw + 12, 24);
+            ctx.fillStyle = "#fff"; ctx.textBaseline = "top"; ctx.fillText(label, x + 9, y + 6);
+            ctx.strokeStyle = "rgba(255,255,255,0.16)"; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, cW - 1, cH - 1);
+          }
+          resolve(c.toDataURL("image/jpeg", 0.85));
+        } catch (e) { resolve(null); }
+      };
+      imgs.forEach((im) => {
+        const fin = () => { if (--pending <= 0) done(); };
+        if (im.complete) fin(); else { im.onload = fin; im.onerror = fin; }
+      });
+    } catch (e) { resolve(null); }
+  });
+}
+
+// Sonnet xác nhận (cross-image): các ô nào là CÙNG một sản phẩm. Dùng lại parseGroups.
+async function confirmSameProduct(montageB64, n) {
+  const prompt =
+`Ảnh kèm theo là 1 lưới (contact sheet) gồm ${n} ô, mỗi ô đánh SỐ ở góc trên-trái (1..${n}). Các ô là crop của các vật thể LẤY TỪ NHIỀU ẢNH nội thất khác nhau, đã được sàng lọc là "trông na ná nhau".
+Nhiệm vụ: gom những ô là CÙNG MỘT sản phẩm/vật liệu (cùng kiểu dáng, thiết kế, chất liệu, finish; bỏ qua khác biệt nhỏ do góc chụp, khoảng cách, ánh sáng, hay ảnh khác nhau) vào chung 1 nhóm.
+Chỉ gom khi bạn TỰ TIN chúng là cùng một loại (tương đồng > ~50%). Nếu nghi ngờ khác kiểu/khác chất liệu -> ĐỂ RIÊNG (thà tách còn hơn gộp nhầm). Coi bản đối xứng gương / xoay hướng khác của cùng thiết kế là CÙNG một loại.
+Mỗi ô thuộc ĐÚNG 1 nhóm; mọi số 1..${n} xuất hiện đúng một lần. Ô đứng một mình -> nhóm 1 phần tử.
+CHỈ trả về JSON (không markdown, không giải thích), dạng:
+{"groups":[{"members":[1,3],"loai":"ghế bành đơn"},{"members":[2],"loai":"ghế khác"}]}`;
+  try {
+    const res = await fetch("/api/analyze", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-5", max_tokens: 1000,
+        messages: [{ role: "user", content: [
+          { type: "image", source: { type: "base64", media_type: "image/jpeg", data: montageB64 } },
+          { type: "text", text: prompt },
+        ] }],
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && data.type === "error") return null;
+    const textOut = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
+    return parseGroups(textOut, n);
+  } catch (e) { return null; }
+}
+
+
 function separate(pts, minDist, w, h, iters) {
   const p = pts.map((o) => ({ x: o.x, y: o.y }));
   const n = p.length, N = iters || 70;
@@ -1247,6 +1379,8 @@ function buildDisplayNo(rows) {
 
 function InventoryExtractor() {
   const [rows, setRows] = useState([]);
+  const rowsRef = useRef(rows);                 // luôn trỏ rows MỚI NHẤT (dùng trong các bước async sau setState)
+  useEffect(() => { rowsRef.current = rows; }, [rows]);
   // Danh sách nhiều ảnh. Mỗi ảnh: { id, preview(dataURL), imgData(base64), mediaType, fileName, status }
   // status: "idle" | "analyzing" | "done" | "error"
   const [images, setImages] = useState([]);
@@ -1645,7 +1779,9 @@ function InventoryExtractor() {
           const b0 = r.instances[0];
           return { ...r, thumb: b0 && elReady(b0.imgId) ? makeThumb(getEl(b0.imgId), b0) : null };
         });
-        return sortRows(combined);
+        const finalRows = sortRows(combined);
+        rowsRef.current = finalRows;    // cập nhật ĐỒNG BỘ để bước gộp mã đọc được rows mới nhất
+        return finalRows;
       });
       setImages((prev) => prev.map((x) => (x.id === imgId ? { ...x, status: "done" } : x)));
       return items.length;
@@ -1657,6 +1793,84 @@ function InventoryExtractor() {
   }
 
   // Phân tích riêng ảnh đang xem
+  // ---- GỘP MÃ TƯƠNG TỰ: lọc ứng viên (text) -> Sonnet xác nhận thị giác -> gộp + gán lại mã ----
+  // Chạy trên rowsRef.current (rows mới nhất). Trả số DÒNG bị gộp bớt (0 nếu không gộp gì).
+  async function mergeSimilarCodes() {
+    const cur = rowsRef.current || [];
+    if (cur.length < 2) return 0;
+    const clusters = candidateClusters(cur);              // các cụm nghi giống (cùng prefix, token gần)
+    if (!clusters.length) return 0;
+
+    const rank = { "Cao": 3, "Trung bình": 2, "Thấp": 1 };
+    // Union-find trên TOÀN bảng để gộp các dòng được Sonnet xác nhận cùng nhau.
+    const parent = cur.map((_, i) => i);
+    const find = (x) => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+    const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
+
+    for (const cl of clusters) {
+      // Crop đại diện cho từng dòng trong cụm (bỏ dòng không tạo được crop -> không đủ căn cứ).
+      const withCrop = cl.map((idx) => ({ idx, crop: rowExportCrop(cur[idx]) })).filter((o) => o.crop && o.crop.data);
+      if (withCrop.length < 2) continue;                  // không đủ 2 ảnh để so -> bỏ qua cụm
+      const montage = await buildMontageFromCrops(withCrop.map((o) => o.crop.data));
+      if (!montage) continue;
+      const b64 = montage.indexOf(",") >= 0 ? montage.slice(montage.indexOf(",") + 1) : montage;
+      const groups = await confirmSameProduct(b64, withCrop.length);
+      if (!groups) continue;
+      // Mỗi group con (>=2 phần tử) do Sonnet xác nhận -> union các row index tương ứng.
+      for (const g of groups) {
+        if (!g.members || g.members.length < 2) continue;
+        const rowIdxs = g.members.map((m) => withCrop[m - 1] && withCrop[m - 1].idx).filter((x) => x != null);
+        for (let k = 1; k < rowIdxs.length; k++) union(rowIdxs[0], rowIdxs[k]);
+      }
+    }
+
+    // Thực thi gộp theo các cụm union cuối cùng.
+    const byRoot = new Map();
+    cur.forEach((_, i) => { const r = find(i); if (!byRoot.has(r)) byRoot.set(r, []); byRoot.get(r).push(i); });
+    let mergedCount = 0;
+    const out = [];
+    for (const idxs of byRoot.values()) {
+      if (idxs.length === 1) { out.push(cur[idxs[0]]); continue; }
+      // Chọn dòng ĐẠI DIỆN: do_tin_cay cao nhất, rồi mô tả dài nhất (nhiều thông tin nhất).
+      idxs.sort((a, b) => {
+        const ra = rank[cur[a].do_tin_cay] || 0, rb = rank[cur[b].do_tin_cay] || 0;
+        if (rb !== ra) return rb - ra;
+        return String(cur[b].vat_lieu || "").length - String(cur[a].vat_lieu || "").length;
+      });
+      const base = { ...cur[idxs[0]], instances: [...(cur[idxs[0]].instances || [])] };
+      const locs = new Set(splitLocs(base.vi_tri));
+      const srcImgs = new Set(base.srcImgs || []);
+      let slMax = parseInt(base.soLuong, 10); slMax = Number.isFinite(slMax) ? slMax : 1;
+      for (let k = 1; k < idxs.length; k++) {
+        const it = cur[idxs[k]];
+        (it.instances || []).forEach((b) => base.instances.push(b));   // giữ ĐỦ vị trí ký hiệu trên các ảnh
+        splitLocs(it.vi_tri).forEach((s) => locs.add(s));
+        (it.srcImgs || []).forEach((s) => srcImgs.add(s));
+        const note = String(it.ghi_chu || "").trim();
+        if (note && String(base.ghi_chu || "").indexOf(note) < 0) base.ghi_chu = [base.ghi_chu, note].filter(Boolean).join("; ");
+        const sl = parseInt(it.soLuong, 10); if (Number.isFinite(sl)) slMax = Math.max(slMax, sl);   // xuyên ảnh: lấy MAX
+        if ((rank[it.do_tin_cay] || 0) > (rank[base.do_tin_cay] || 0)) base.do_tin_cay = it.do_tin_cay;
+      }
+      base.vi_tri = Array.from(locs).join(", ");
+      base.srcImgs = Array.from(srcImgs);
+      base.soLuong = slMax || 1;
+      out.push(base);
+      mergedCount += idxs.length - 1;
+    }
+    if (!mergedCount) return 0;
+
+    pushUndo("gộp mã tương tự");
+    // Gán lại mã liên tục + đảm bảo thumb.
+    let coded = codeItems(out, gpOf).map((r) => {
+      if (r.thumb) return r;
+      const b0 = (r.instances || [])[0];
+      return { ...r, thumb: b0 && elReady(b0.imgId) ? makeThumb(getEl(b0.imgId), b0) : null };
+    });
+    setRows(sortRows(coded));
+    rowsRef.current = sortRows(coded);
+    return mergedCount;
+  }
+
   async function analyzeActive() {
     if (!activeImage) { setError("Chưa có ảnh. Hãy tải ảnh phối cảnh lên trước."); return; }
     setLoading(true); setError(null); setStatus(null); setSelected(new Set());
@@ -1680,10 +1894,19 @@ function InventoryExtractor() {
       try { await analyzeOne(im.id); ok++; }
       catch (e) { fail++; errs.push("Ảnh #" + (i + 1) + ": " + ((e && e.message) || "lỗi")); }
     }
+    // Sau khi phân tích xong TẤT CẢ ảnh -> gộp mã tương tự (text lọc + Sonnet xác nhận).
+    let mergedN = 0;
+    if (ok) {
+      try {
+        setStatus("Đang gộp mã tương tự (Sonnet xác nhận)…");
+        await new Promise((r) => setTimeout(r, 0));   // nhường 1 tick để rows + rowsRef flush xong
+        mergedN = await mergeSimilarCodes();
+      } catch (e) { /* gộp lỗi thì bỏ qua, giữ nguyên bảng đã phân tích */ }
+    }
     setLoading(false);
     if (!ok) setError("Không phân tích được ảnh nào — " + (errs[0] || "kiểm tra kết nối rồi thử lại.") + (errs.length > 1 ? " (và " + (errs.length - 1) + " ảnh khác)" : ""));
     else {
-      setStatus("Đã phân tích " + ok + "/" + list.length + " ảnh" + (fail ? " · " + fail + " ảnh lỗi" : "") + " · gộp trùng xuyên ảnh & gán mã.");
+      setStatus("Đã phân tích " + ok + "/" + list.length + " ảnh" + (fail ? " · " + fail + " ảnh lỗi" : "") + " · gộp trùng xuyên ảnh & gán mã" + (mergedN ? " · đã gộp thêm " + mergedN + " mã tương tự" : "") + ".");
       if (fail) setError("Một số ảnh lỗi — " + errs.join(" | "));
     }
   }
