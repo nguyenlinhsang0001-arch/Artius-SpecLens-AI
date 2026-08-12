@@ -508,6 +508,34 @@ function makeExportCrop(imgEl, box, maxPx = 440) {
 // Bỏ tiền tố "data:image/...;base64," -> chỉ còn base64 (để gửi cho API).
 function b64of(dataUrl) { const i = String(dataUrl || "").indexOf(","); return i >= 0 ? dataUrl.slice(i + 1) : dataUrl; }
 
+/* Nạp ExcelJS (bản UMD, expose window.ExcelJS) từ CDN — KHÔNG cần thêm dependency vào package.json.
+   ExcelJS cần thiết để NHÚNG ẢNH crop vào ô Excel (SheetJS community không hỗ trợ ảnh).
+   Thử lần lượt nhiều CDN; nếu offline/chặn mạng -> reject để caller rơi về bản xuất cơ bản (không ảnh). */
+let _exceljsLoading = null;
+function loadExcelJS() {
+  if (typeof window !== "undefined" && window.ExcelJS) return Promise.resolve(window.ExcelJS);
+  if (_exceljsLoading) return _exceljsLoading;
+  const urls = [
+    "https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js",
+    "https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js",
+  ];
+  _exceljsLoading = new Promise((resolve, reject) => {
+    let i = 0;
+    const tryNext = () => {
+      if (window.ExcelJS) return resolve(window.ExcelJS);
+      if (i >= urls.length) { _exceljsLoading = null; return reject(new Error("Không nạp được ExcelJS (mạng?)")); }
+      const s = document.createElement("script");
+      s.src = urls[i++]; s.async = true;
+      s.onload = () => (window.ExcelJS ? resolve(window.ExcelJS) : tryNext());
+      s.onerror = () => { s.remove(); tryNext(); };
+      document.head.appendChild(s);
+    };
+    tryNext();
+  });
+  return _exceljsLoading;
+}
+
 /* ===================== KẾT XUẤT HTML TƯƠNG TÁC (hướng A) =====================
    Một file .html tự chứa: nhúng ảnh (dataURL) + dữ liệu bảng + crop từng món.
    Mở offline bằng trình duyệt: bấm/rê ký hiệu -> popover chi tiết; danh sách đồng bộ 2 chiều;
@@ -521,6 +549,9 @@ html,body{margin:0}
 .expbar .expmeta{font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .expbar .btn{background:#18202f;border:1px solid var(--line);color:var(--tx2);border-radius:8px;padding:7px 12px;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .expbar .btn:hover{border-color:var(--ac)}
+/* nút In/Xuất PDF nổi bật (sáng lên) — dùng accent gradient ARTIUS */
+.expbar .btn.primary{background:linear-gradient(135deg,var(--ac2,#7ba3cf),var(--ac,#9dc0e6));border:1px solid var(--ac,#9dc0e6);color:var(--acink,#0c1524);font-weight:700;box-shadow:0 3px 12px rgba(123,163,207,0.35)}
+.expbar .btn.primary:hover{filter:brightness(1.08)}
 .expbar .sp{margin-left:auto}
 #ax{display:flex;--splitpct:45%;height:calc(100vh - 47px);min-height:0;overflow:hidden}
 .tabs-inner{display:contents}
@@ -551,9 +582,13 @@ body.paged-on #pagedpreview{display:block}
  .print-only .ptitle{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #222;padding-bottom:6px;margin-bottom:10px}
  .print-only .ptitle .pt-l b{font-size:15px}.print-only .ptitle .pt-l span{display:block;font-size:10px;color:#444;margin-top:2px}
  .print-only .ptitle .pt-r{font-size:11px;font-weight:700;color:#333;white-space:nowrap;padding-left:12px}
- .print-only .pimg{text-align:center;margin-bottom:10px}
+ /* Bố cục 2 cột mỗi trang: ảnh (trái) + bảng inventory (phải), vừa 1 trang A4 landscape */
+ .print-only .prow{display:flex;gap:6mm;align-items:flex-start}
+ .print-only .pcol-img{flex:0 0 54%;max-width:54%;min-width:0}
+ .print-only .pcol-tbl{flex:1 1 auto;min-width:0}
+ .print-only .pimg{text-align:center;margin:0}
  .print-only .pimg-inner{position:relative;display:inline-block;max-width:100%}
- .print-only .pimg-inner img{display:block;max-width:100%;max-height:150mm;height:auto;border:1px solid #ccc}
+ .print-only .pimg-inner img{display:block;max-width:100%;max-height:175mm;height:auto;border:1px solid #ccc}
  .print-only .pmk{position:absolute;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:#fff;border:1.6px solid #c00;color:#c00;font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;line-height:1}
  .print-only table.pleg{width:100%;border-collapse:collapse;font-size:10px}
  .print-only table.pleg th,.print-only table.pleg td{border:1px solid #999;padding:2px 5px;text-align:left;vertical-align:top}
@@ -603,12 +638,12 @@ function initEvents(){
  window.addEventListener("keydown",function(e){if(e.key==="Escape")deselect();});
  var rt=null;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(renderMarkers,120);});
 }
-var PAGED_CSS='@page{size:A4 landscape;margin:14mm 12mm 15mm;@top-left{content:string(rhtitle);font-size:9px;color:#666}@top-right{content:string(rhmeta);font-size:9px;color:#666}@bottom-center{content:"Trang " counter(page) " / " counter(pages);font-size:9px;color:#666}}.rh-title{string-set:rhtitle content(text)}.rh-meta{string-set:rhmeta content(text)}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#000;background:#fff}.ppage{break-after:page}.ppage:last-child{break-after:auto}.ptitle{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #222;padding-bottom:6px;margin-bottom:10px}.ptitle .pt-l b{font-size:15px}.ptitle .pt-l span{display:block;font-size:10px;color:#444;margin-top:2px}.ptitle .pt-r{font-size:11px;font-weight:700;color:#333}.pimg{text-align:center;margin-bottom:10px}.pimg-inner{position:relative;display:inline-block;max-width:100%}.pimg-inner img{display:block;max-width:100%;max-height:120mm;height:auto;border:1px solid #ccc}.pmk{position:absolute;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:#fff;border:1.6px solid #c00;color:#c00;font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;line-height:1}table.pleg{width:100%;border-collapse:collapse;font-size:10px}table.pleg th,table.pleg td{border:1px solid #999;padding:2px 5px;text-align:left;vertical-align:top}table.pleg thead th{background:#eee}table.pleg thead{display:table-header-group}table.pleg td.c,table.pleg th.c{text-align:center}table.pleg tr.lg td{background:#eef0f2;font-weight:700;text-transform:uppercase;font-size:9px}table.pleg tr{break-inside:avoid}';
+var PAGED_CSS='@page{size:A4 landscape;margin:14mm 12mm 15mm;@top-left{content:string(rhtitle);font-size:9px;color:#666}@top-right{content:string(rhmeta);font-size:9px;color:#666}@bottom-center{content:"Trang " counter(page) " / " counter(pages);font-size:9px;color:#666}}.rh-title{string-set:rhtitle content(text)}.rh-meta{string-set:rhmeta content(text)}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#000;background:#fff}.ppage{break-after:page}.ppage:last-child{break-after:auto}.ptitle{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #222;padding-bottom:6px;margin-bottom:10px}.ptitle .pt-l b{font-size:15px}.ptitle .pt-l span{display:block;font-size:10px;color:#444;margin-top:2px}.ptitle .pt-r{font-size:11px;font-weight:700;color:#333}.prow{display:flex;gap:6mm;align-items:flex-start}.pcol-img{flex:0 0 54%;max-width:54%;min-width:0}.pcol-tbl{flex:1 1 auto;min-width:0}.pimg{text-align:center;margin:0}.pimg-inner{position:relative;display:inline-block;max-width:100%}.pimg-inner img{display:block;max-width:100%;max-height:170mm;height:auto;border:1px solid #ccc}.pmk{position:absolute;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:#fff;border:1.6px solid #c00;color:#c00;font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;line-height:1}table.pleg{width:100%;border-collapse:collapse;font-size:10px}table.pleg th,table.pleg td{border:1px solid #999;padding:2px 5px;text-align:left;vertical-align:top}table.pleg thead th{background:#eee}table.pleg thead{display:table-header-group}table.pleg td.c,table.pleg th.c{text-align:center}table.pleg tr.lg td{background:#eef0f2;font-weight:700;text-transform:uppercase;font-size:9px}table.pleg tr{break-inside:avoid}';
 function printFlowHtml(){var m=D.meta||{};function head(sub){var meta=[m.client?("CĐT: "+m.client):"",m.location||"",m.author?("Người bóc: "+m.author):"",m.date||""].filter(function(x){return x;}).map(esc).join("   \u00b7   ");return '<div class="ptitle"><div class="pt-l"><b class="rh-title">'+esc(m.project||"Bảng bóc tách vật liệu")+'</b><span class="rh-meta">'+meta+'</span></div><div class="pt-r">'+esc(sub)+'</div></div>';}
 function legRows(pred){var h="";D.groups.forEach(function(g){var gi=g.items.filter(pred);if(!gi.length)return;h+='<tr class="lg"><td colspan="6">'+esc(g.nhom)+'</td></tr>';gi.forEach(function(it){h+='<tr><td class="c">'+it.no+'</td><td>'+esc(it.ma)+'</td><td>'+esc(it.mon)+'</td><td>'+esc(it.vat_lieu)+'</td><td class="c">'+esc(it.sl)+'</td><td>'+esc(it.vi_tri)+'</td></tr>';});});return h;}
 var THEAD='<thead><tr><th class="c">#</th><th>Mã</th><th>Món</th><th>Vật liệu</th><th class="c">SL</th><th>Vị trí</th></tr></thead>';
 var html="",total=imgs.length;
-imgs.forEach(function(im,ix){var onImg=function(it){return it.marks.some(function(mk){return mk.img===im.id;});};var any=false;D.groups.forEach(function(g){if(g.items.some(onImg))any=true;});if(!any)return;var W=1000,H=650;var mk=marksOn(im.id);var pts=mk.map(function(x){return{x:x.cx*W,y:x.cy*H};});var sep=separate(pts,26,W,H,70);var marks="";mk.forEach(function(x,i){marks+='<div class="pmk" style="left:'+(sep[i].x/W*100)+'%;top:'+(sep[i].y/H*100)+'%">'+x.no+'</div>';});html+='<section class="ppage">'+head("Ảnh "+(ix+1)+"/"+total)+'<div class="pimg"><div class="pimg-inner"><img src="'+im.src+'">'+marks+'</div></div><table class="pleg">'+THEAD+'<tbody>'+legRows(onImg)+'</tbody></table></section>';});
+imgs.forEach(function(im,ix){var onImg=function(it){return it.marks.some(function(mk){return mk.img===im.id;});};var any=false;D.groups.forEach(function(g){if(g.items.some(onImg))any=true;});if(!any)return;var W=1000,H=650;var mk=marksOn(im.id);var pts=mk.map(function(x){return{x:x.cx*W,y:x.cy*H};});var sep=separate(pts,26,W,H,70);var marks="";mk.forEach(function(x,i){marks+='<div class="pmk" style="left:'+(sep[i].x/W*100)+'%;top:'+(sep[i].y/H*100)+'%">'+x.no+'</div>';});html+='<section class="ppage">'+head("Ảnh "+(ix+1)+"/"+total)+'<div class="prow"><div class="pcol-img"><div class="pimg"><div class="pimg-inner"><img src="'+im.src+'">'+marks+'</div></div></div><div class="pcol-tbl"><table class="pleg">'+THEAD+'<tbody>'+legRows(onImg)+'</tbody></table></div></div></section>';});
 html+='<section class="ppage psum">'+head("Tổng hợp \u2014 "+items.length+" món")+'<table class="pleg">'+THEAD+'<tbody>'+legRows(function(){return true;})+'</tbody></table></section>';
 return html;}
 function fillPrintRoot(){var r=document.getElementById("printroot");if(r)r.innerHTML=printFlowHtml();}
@@ -620,7 +655,7 @@ init();`;
 function buildInteractiveHtml(payload, appCss, pagedB64) {
   const DATA = JSON.stringify(payload).replace(/</g, "\\u003c");
   const head = '<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ARTIUS · Spec ảnh</title><style>' + (appCss || "") + ARTIUS_HTML_SUPP + '</style></head>';
-  const shell = '<div id="screen"><div class="expbar"><div><div class="expttl" id="expttl"></div><div class="expmeta" id="expmeta"></div></div><span class="sp"></span><button class="btn" id="btnprint">In / Xuất PDF</button></div>'
+  const shell = '<div id="screen"><div class="expbar"><div><div class="expttl" id="expttl"></div><div class="expmeta" id="expmeta"></div></div><span class="sp"></span><button class="btn primary" id="btnprint">In / Xuất PDF (A4)</button></div>'
     + '<div class="ax" id="ax">'
     + '<section class="pane pane-image"><div class="pane-body"><div>'
     + '<div class="block-head"><span class="section-label">02 · Ảnh phối cảnh</span></div>'
@@ -1910,7 +1945,9 @@ function InventoryExtractor() {
     return ws;
   }
 
-  function exportExcel() {
+  // Bản xuất Excel CƠ BẢN (SheetJS) — dùng làm FALLBACK khi không nạp được ExcelJS (offline).
+  // Không nhúng được ảnh; giữ nguyên hành vi cũ để nút luôn có tác dụng.
+  function exportExcelBasic() {
     try {
       if (!rows.length) return;
       const wb = XLSX.utils.book_new();
@@ -1935,9 +1972,198 @@ function InventoryExtractor() {
       });
       order.forEach((cat) => addSheet(cat, buildCategorySheet(cat, groups[cat])));
       XLSX.writeFile(wb, safeName() + ".xlsx");
-      setStatus("Đã xuất " + safeName() + ".xlsx — sheet TỔNG HỢP + mỗi nhóm vật liệu 1 sheet theo template spec.");
+      setStatus("Đã xuất " + safeName() + ".xlsx (bản cơ bản, KHÔNG ảnh) — không nạp được ExcelJS.");
     } catch (e) {
       setStatus("Trình duyệt chặn tải file. Dùng “Sao chép bảng” rồi dán vào Excel.");
+    }
+  }
+
+  // Lấy crop đại diện (dataURL) của 1 dòng để nhúng vào Excel — dùng box đầu tiên, ~520px cho nét khi in.
+  function rowExportCrop(r) {
+    const b0 = (r.instances || [])[0];
+    if (b0 && elReady(b0.imgId)) { const c = makeExportCrop(getEl(b0.imgId), b0, 520); if (c && c.data) return c; }
+    if (r.thumb) return { data: r.thumb, w: 72, h: 72 };
+    return null;
+  }
+
+  /* Dựng 1 sheet nhóm theo ĐÚNG template ảnh đính kèm (ARTIUS spec) bằng ExcelJS:
+     - khối tiêu đề (logo chữ + tên bảng), 4 dòng thông tin dự án, header hồng, dải nhóm xám
+     - mỗi món = thẻ 6 dòng dọc: Mô tả / Vị trí / Kích thước / Mã(đỏ) / Nhãn hiệu / Ghi chú
+     - cột E "HÌNH ẢNH MẪU 3D": tự động chèn ẢNH CROP của dòng (giữ tỉ lệ, canh giữa trong ô gộp) */
+  function fillCatSheetXLSX(wb, ws, cat, list) {
+    const thin = { style: "thin", color: { argb: "FF8A8A8A" } };
+    const ALL = { top: thin, left: thin, bottom: thin, right: thin };
+    const PINK = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE9CFD2" } };
+    const GRAY = { type: "pattern", pattern: "solid", fgColor: { argb: "FFCFCFCF" } };
+    const midC = { vertical: "middle", horizontal: "center", wrapText: true };
+    const midL = { vertical: "middle", horizontal: "left", wrapText: true };
+
+    // Bề rộng cột (xấp xỉ px để tính canh ảnh): A stt, B ký hiệu, C nhãn, D giá trị, E ảnh 3D, F ảnh duyệt
+    ws.columns = [{ width: 6 }, { width: 13 }, { width: 24 }, { width: 40 }, { width: 30 }, { width: 30 }];
+
+    // ----- Khối tiêu đề -----
+    ws.mergeCells("A1:B1");
+    ws.getCell("A1").value = "A R T I U S\nBEYOND DESIGN AND BUILD";
+    ws.getCell("A1").font = { bold: true, size: 15, name: "Arial" };
+    ws.getCell("A1").alignment = midC;
+    ws.mergeCells("C1:F1");
+    ws.getCell("C1").value = "CHỈ DẪN KỸ THUẬT - TECHNICAL SPECIFICATION\nHẠNG MỤC - CATEGORY";
+    ws.getCell("C1").font = { bold: true, size: 13, name: "Arial" };
+    ws.getCell("C1").alignment = midC;
+    ws.getRow(1).height = 46;
+
+    const infos = [
+      "Dự án - mã dự án / Project - project code: " + (projectName || ""),
+      "Địa điểm / Location: " + (location || ""),
+      "Chủ đầu tư / Customer: " + (client || ""),
+      "Hạng mục vật tư - thiết bị / Materials - equipment category: " + cat,
+    ];
+    infos.forEach((txt, k) => {
+      const rr = 2 + k;
+      ws.mergeCells("A" + rr + ":F" + rr);
+      const c = ws.getCell("A" + rr);
+      c.value = txt; c.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+      c.font = { size: 11, name: "Arial", bold: k === 3 };
+      ws.getRow(rr).height = 18;
+    });
+
+    // ----- Hàng header (gộp dọc 6-7), nền hồng -----
+    ws.mergeCells("A6:A7"); ws.getCell("A6").value = "STT\nNO.";
+    ws.mergeCells("B6:B7"); ws.getCell("B6").value = "KÝ HIỆU\nSYMBOL";
+    ws.mergeCells("C6:D7"); ws.getCell("C6").value = "THÔNG TIN / INFORMATION";
+    ws.mergeCells("E6:E7"); ws.getCell("E6").value = "HÌNH ẢNH MẪU 3D\nSAMPLE PICTURE 3D";
+    ws.mergeCells("F6:F7"); ws.getCell("F6").value = "HÌNH ẢNH MẪU DUYỆT\nSAMPLE PICTURE APPROVED";
+    ["A6", "B6", "C6", "E6", "F6"].forEach((a) => {
+      const c = ws.getCell(a); c.fill = PINK; c.font = { bold: true, size: 9, name: "Arial" }; c.alignment = midC;
+    });
+    ws.getRow(6).height = 16; ws.getRow(7).height = 16;
+
+    // ----- Dải nhóm (xám) -----
+    ws.mergeCells("A8:F8");
+    const band = ws.getCell("A8");
+    band.value = String(cat || "").toUpperCase() + "/";
+    band.fill = GRAY; band.font = { bold: true, size: 11, name: "Arial" }; band.alignment = { vertical: "middle", horizontal: "center" };
+    ws.getRow(8).height = 18;
+
+    // ----- Các thẻ món (6 dòng/thẻ) -----
+    const CARD_H = 22;                 // pt/dòng
+    const colPx = 30 * 7 + 5;          // ~ px cột E
+    const rowPx = CARD_H * 96 / 72;    // ~ px/dòng
+    let s = 9, stt = 0;
+    list.forEach((r) => {
+      stt++;
+      const desc = [r.mon, r.vat_lieu].filter(Boolean).join(" — ");
+      ws.mergeCells("A" + s + ":A" + (s + 5)); const ca = ws.getCell("A" + s); ca.value = stt; ca.font = { bold: true, size: 11, name: "Arial" }; ca.alignment = midC;
+      ws.mergeCells("B" + s + ":B" + (s + 5)); const cb = ws.getCell("B" + s); cb.value = r.ma || ""; cb.font = { bold: true, size: 11, name: "Arial" }; cb.alignment = midC;
+      ws.mergeCells("E" + s + ":E" + (s + 5));
+      ws.mergeCells("F" + s + ":F" + (s + 5));
+      const L = [
+        ["Mô tả / Description:", desc],
+        ["Vị trí sử dụng / Area:", r.vi_tri || ""],
+        ["Kích thước / Dimension:", ""],
+        ["Mã / Code:", ""],
+        ["Nhãn hiệu / Brand:", ""],
+        ["Ghi chú / Note:", r.ghi_chu || ""],
+      ];
+      for (let k = 0; k < 6; k++) {
+        const rr = s + k;
+        const lc = ws.getCell("C" + rr); lc.value = L[k][0]; lc.alignment = midL;
+        lc.font = k === 3 ? { color: { argb: "FFC00000" }, name: "Arial", size: 10 } : { name: "Arial", size: 10 };
+        const vc = ws.getCell("D" + rr); vc.value = L[k][1]; vc.alignment = midL; vc.font = { name: "Arial", size: 10 };
+        ws.getRow(rr).height = CARD_H;
+      }
+
+      // Nhúng ảnh crop vào ô E (gộp 6 dòng) — giữ tỉ lệ, canh giữa.
+      const crop = rowExportCrop(r);
+      if (crop && crop.data) {
+        try {
+          const imgId = wb.addImage({ base64: b64of(crop.data), extension: "jpeg" });
+          const boxW = colPx - 12, boxH = rowPx * 6 - 12;
+          const cw = crop.w || 4, ch = crop.h || 3;
+          const sc = Math.min(boxW / cw, boxH / ch, 1);
+          const dw = Math.max(1, Math.round(cw * sc)), dh = Math.max(1, Math.round(ch * sc));
+          ws.addImage(imgId, {
+            tl: { col: 4 + ((colPx - dw) / 2) / colPx, row: (s - 1) + ((rowPx * 6 - dh) / 2) / rowPx },
+            ext: { width: dw, height: dh },
+            editAs: "oneCell",
+          });
+        } catch (e) { /* bỏ qua ảnh lỗi, vẫn giữ ô trống */ }
+      }
+      s += 6;
+    });
+
+    // ----- Viền lưới toàn bảng (ô gộp -> tự thành khung ngoài) -----
+    const last = ws.rowCount;
+    for (let rr = 1; rr <= last; rr++) for (let cc = 1; cc <= 6; cc++) ws.getCell(rr, cc).border = ALL;
+  }
+
+  // Dựng sheet TỔNG HỢP (ExcelJS) — giữ đủ cột gồm cả SL, có tiêu đề tô nền + viền.
+  function fillSummarySheetXLSX(ws) {
+    ws.columns = [{ width: 6 }, { width: 10 }, { width: 16 }, { width: 26 }, { width: 28 }, { width: 18 }, { width: 6 }, { width: 12 }, { width: 28 }];
+    const thin = { style: "thin", color: { argb: "FF8A8A8A" } };
+    const ALL = { top: thin, left: thin, bottom: thin, right: thin };
+    const H = ["STT", "Mã", "Nhóm", "Món", "Vật liệu / Finish", "Vị trí", "SL", "Độ tin cậy", "Ghi chú"];
+    const hr = ws.addRow(H);
+    hr.eachCell((c) => {
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE9CFD2" } };
+      c.font = { bold: true, size: 10, name: "Arial" };
+      c.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+      c.border = ALL;
+    });
+    hr.height = 20;
+    rows.forEach((r, i) => {
+      const row = ws.addRow([i + 1, r.ma, r.nhom, r.mon, r.vat_lieu, r.vi_tri, qtyOf(r), r.do_tin_cay, r.ghi_chu]);
+      row.eachCell((c, col) => {
+        c.font = { size: 10, name: "Arial" };
+        c.alignment = { vertical: "middle", wrapText: true, horizontal: (col === 1 || col === 7) ? "center" : "left" };
+        c.border = ALL;
+      });
+    });
+    ws.views = [{ state: "frozen", ySplit: 1 }];
+  }
+
+  // Xuất Excel GIỐNG TEMPLATE + tự chèn ảnh crop vào cột "HÌNH ẢNH MẪU 3D" (ExcelJS).
+  async function exportExcelRich() {
+    const ExcelJS = await loadExcelJS();
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "ARTIUS SpecLens";
+    const used = new Set();
+    const sheetName = (name) => {
+      let n = String(name || "SHEET").replace(/[\\/?*\[\]:]/g, " ").trim().slice(0, 28) || "SHEET";
+      let base = n, k = 2;
+      while (used.has(n.toLowerCase())) { n = (base.slice(0, 24) + " " + k).trim(); k++; }
+      used.add(n.toLowerCase()); return n;
+    };
+    // TỔNG HỢP
+    fillSummarySheetXLSX(wb.addWorksheet(sheetName("TỔNG HỢP")));
+    // Nhóm vật liệu -> mỗi nhóm 1 sheet theo template
+    const groups = {}, order = [];
+    rows.forEach((r) => {
+      const pfx = (r.ma.split("-")[0] || "").toUpperCase();
+      const c = sheetCategory(pfx);
+      if (!groups[c]) { groups[c] = []; order.push(c); }
+      groups[c].push(r);
+    });
+    order.forEach((c) => fillCatSheetXLSX(wb, wb.addWorksheet(sheetName(c)), c, groups[c]));
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = safeName() + ".xlsx"; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    const withImg = rows.filter((r) => !!rowExportCrop(r)).length;
+    setStatus("Đã xuất " + safeName() + ".xlsx theo template — TỔNG HỢP + mỗi nhóm 1 sheet, đã chèn " + withImg + "/" + rows.length + " ảnh crop vào cột HÌNH ẢNH MẪU 3D.");
+  }
+
+  async function exportExcel() {
+    if (!rows.length) return;
+    setStatus("Đang dựng Excel theo template (nạp ExcelJS để nhúng ảnh)…");
+    try {
+      await exportExcelRich();
+    } catch (e) {
+      // Không nạp được ExcelJS (offline) -> rơi về bản cơ bản không ảnh, để nút vẫn dùng được.
+      setStatus("Không nhúng được ảnh (thiếu ExcelJS/mạng) — xuất bản cơ bản không ảnh.");
+      exportExcelBasic();
     }
   }
 
@@ -2356,7 +2582,7 @@ function InventoryExtractor() {
               <button className={"chip-toggle" + (onlyUnpinned ? " on" : "")} onClick={() => setOnlyUnpinned((v) => !v)} title="Chỉ hiện dòng chưa gắn ký hiệu (SL=0, không có hình/chấm)">
                 <span className="dotc" style={{ background: "var(--ac)" }} /> Chưa gắn KH{unpinnedN ? " (" + unpinnedN + ")" : ""}
               </button>
-              <button className="btn btn-ghost" onClick={exportExcel} disabled={!hasRows}><Download size={15} /> Xuất Excel (bảng)</button>
+              <button className="btn btn-ghost" onClick={exportExcel} disabled={!hasRows} title="Xuất .xlsx theo template ARTIUS — mỗi nhóm 1 sheet, tự chèn ảnh crop vào cột HÌNH ẢNH MẪU 3D"><Download size={15} /> Xuất Excel (bảng)</button>
               <button className="btn btn-ghost" onClick={exportHtml} disabled={!hasRows || !hasImages} title="Xuất file HTML tương tác: bấm ký hiệu để xem chi tiết, chuyển ảnh bằng tab, In/PDF kèm legend"><ImageDown size={15} /> Xuất HTML</button>
             </div>
 
