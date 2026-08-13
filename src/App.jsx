@@ -509,87 +509,6 @@ function b64of(dataUrl) { const i = String(dataUrl || "").indexOf(","); return i
 const ARTIUS_LOGO_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkAAAADACAQAAABGvBRMAAAvzUlEQVR42u2dd7wVxdnHv1vOpTcBI6KCCiqiRKqCWIiCDYRgQxHEiIpGYzRGjRpMYom9xBI1loAtYozYfbGBBiVYE0XQiKIRBKRJh3vOzvvHmbP3lNk9e8r1nnvv8zufj152Z2enPPOb53lm5lkLF4FAIKgT2NIEAoFACEggEAgBCQQCgRCQQCAQAhIIBAIhIIFAIAQkEAgEQkACgUAISCAQCISABAKBEJBAIBAIAQkEAiEggUAgEAISCARCQAKBQCAEJBAIhIAEAoEQkEAgEAgBCQQCISCBQCAQAhIIBEJAAoFAUANVxB0D5KM8wc1oRW5OK+fJ5NPJv7LvV1oNCxaaWoHlt1b6v+q6/VRGD5dSlpREULHyEK0WKqNGVpq050pVnRKQRQKFUw8bOSn0iRKed9I6war42lZXZLkc3XZ1037xAHvBLnLYmqUpVgHEb6bczFZP5CmnnfaMVaj4ubVWERebLfXUyFPsx25pM3IUfMfXLGEDm/whVB9mOo/WjKg4TXgTT7O1ztpPsS2HG1rqWb4vokweLkfSLkfbm8WXFTs6UnqMhwdAa/ZhF9qwCzvQBYBlLOAr1vIh89lSvDJTewQU5xCO58x6MgxzZ6yXObTg5zbyPVv5iLm8yxxW1wsjN865/KniSvVfehKvM/05zrE8Ybj+Y/5TYH8mdelOLKB1zr3zubXipCPddZDU2npyFD+hJ50DxvEmvuUlZvAKG4qR9trTf+BYJnAl39RTP9PWIp5pTnOgC8OBJczgUd5gCxCrCC+LSdQ8HE6rwNa/jeqKk5utRfShpU2UdQYCqq5Y2U+6T5oynPEMo0lo2mbswtmczXzuYyorCjUsa0sFTLANI6liFPUVpRLG9kxgBm9xNq2oLsGjVNsG2EH0qrhSreTvdUzZqqwyoSrQ12MuZVL/iaMYzVs8wYg89FODHtzEO0wiVhix1p4NOppOwBk0rdjBV1vUk44+3MlcJuAFuDXrcpZLDouJFWgiP8Uy33RXNARY9aKMlnY/bM8jPEnvgnPoyp95np7Eo/eaXSsNnQAmArA3+9c7ESq3sOzBgzzNbn63qAqZES0S7MLICuyBv6T1giU08gNOth4JDmEOJxWd41BmMYwEXrTWKjcBebpaB9BXX5noX23MOJrXGEqChJ5prAoRvdE0r7i2ms37skG2Dsyv5JrXqUxnx5Lyas90TvLXz+pAA1LAeN+FOJKdhYCAzrzIxSgSFaT/tODMCmyp+4kLAf3AOp2FhYfHb3iAliXn2oxHmJR391CtEFBSC9o+zfncjDENxpIvDQ7XcimqYuhY8RO6VVwrLeWZBmjq1AcjzGMU15Qt39sYEYWC3DJWxPL/Oo4OaXdO5RY2N5BDH9V5mrQqz/NXU80NFSJ4FmMibzawjf1XXQsTy99YKQeE6gBxenF/RMnxsPNOElVMZRjv5OvL8nW15fNoFeMz7nRnGM80kE46hK+M2+OSe6ZtejOA4fQIyeN6PuKlOh9iCnC4jMsjpU5wLDcZrk/gn2XfLLisXh7fqc9GmMLCw+EWtglNuZpX+IxP+IxqYnRlD3bmCDoFpm/LXxnMmvD+LP9A8DiIPjmC+gxeA7DrFV+wODTFQv7OZI7kYgYEpnmAfflfnVOQBSwqwDAyYTFf10K5hIB+eBPM42h+EpLqS25jGt+mXXkXgDaM4uLACXdPruOM8OOpdi1UZ0LO1cPo7q+P1W80Bdw8v838g4O5PLCunbgJoi5T1iL9ZNbECaiNg0tyL3dQazh5WyTfz8n4W/BDy4IH/DwkxVQGcBvfYuf02/dM4QAeNT61lYe5N9+Kb7kJKMHOhp0lzf19BY3BvejisomrGc2ygBTHcRRehdGxVeD15LxZnj4Vp3Pd9rtH7xD95wZOYQUubg5bWLi4rGSswXv0OIMZx7v5JpTym0Un0sLoLWhV73ZElwIHh+kcEUhBv8MhLgNPUCEm2P6BLoEHuChQA65x40zM8PI+x1DG8I7Wnn8wAlIkiDHGeK8rRxQaqqied6qFwweBim0/jpKtCYKK0IAUMDTg7mJ+Tf7jpS5wIvMAeJ3hjOAVbNwo490uc1UOZ++Au6diR9ua1CA6NRlKy+ZJJgekuQDZIS6olOmyacC9x1iFE2HUumzkAmZxPD/heSycqMxSTgLygFMD7x7KHnXseP3hYQN/1OsF2RjI3kJAggqARxXtA+7NJ6qHzmUGB/MENm4hMcDKS0DdA1U5cJlA49sR7RLnSuOdKoYhO8QFlYDWtA2483WalpQPDjaxQlcxy+uEPiX0HMl42jUqR3TKF/Q87xjvHtHoBD1u/AkJ17XDYD1rAu51jqQBKR1LyPbPOUaO+FC+7XAJWnB8aIofMZyHGpErOtl1NgmeoL/h7q50YCU2jWUZWtGb1thZghnnvTqM/iwAi82BBDSIKXh5ozdYEa7UOgEpRtA9T5rTeQivkW01s4Bn+KOh1l3pzopGRD8JbubgnOtb6VYB+8IbNwEFh4cdy218Uptf7yiXCeZh2gGdy6f9G6HCbfFlgBHWnsa1Cc8zEpNoP3WPzwKut2Aq7amuvT6yyzC8kpu5e3NI3rQO4xph59ps5UPjnW6NrCU84zXxAdWlXpocwa8FpujLi3SovQD6dtmqMT6SGn0SnRqdIzr483p7yQgQ+qkIvMPKwHv9eYm+xHVU8zL3l10WAUrQluNy7nzBYwajY3gjE7nkTtPPjfdai+QL6lg6k5bJEqaFpOrLP/klbm2sWJZLAxpB55yrz3KZ/mZiOs6kSaPagGfp434y+wsqmYb+xOaQFE25hRkM1lHNK4yAEsDPDNef5EveMrDpwIo7CV77JsbuxnsbRPYFFQGbBVyVJ80QZvIXuvjGWFnGsF3y0ALFvgzOufsebwMPG56bACj95sZFQ9lYIJIvqAi5tLG4McQVjTbVJvIvLqGtJiGr9BFcHh/QWIMD+hHiwPSMKGpJHEsX/1hqY1iCTdA0J0ZkEp/LCBDUufGVCtC7hWOYnfeJH/FH3uUsmhIvRzwou+TCe3TihJx763kKsFlliAadb8d0w5tlugQQ0LcyAgQVQ0MuaxjOGxHS78pdvMVxeMRL/chUOTSgUWybc/VFFukj+Y8YnhmPW3GfKq5NjDDu/l7MlyL7ggqZJBWKGGsYzj8iPdGbaTzLAaWSUKkE5OFwsuH6X0ltUZzDBzl39+LgRmF+JbcouAEfuv0vSyUCsqACiCf1tV6FyzqO4aKIn2sazhs8zJ6lrI2VTkAHMijn6gJe93cYVPOg4bmJ0AjCkyWddEfT23j3/5BoyIJKMcBSf7nADQzi7YhPj2UO19IpbW3sByOgJHeaQpA9ziY9tyvgKdYbuHPnRhGeLEFLrjDe2cpLfhsKBHVFPlaWxp78qMJ7DOHXfBcpj1ZczLucR9NijDG7xOG1PcNzrm7hibQKOnzDczlpWjC2ASu1qbp7KC6jlzHdXD6M8H1JgaAuEGMLN9KPOyPuVdueW3mDIws3xko1wcbQLufa68xLy9cCphiePJlmJBqgBmClfSPW4yQuCkj3J2gAn2oUNEy9SOHi8jXnsD8PRySV/jzPPXQq7MBGKUPAI2Y83X5fVr4Wr/NRTqrdOcQ/i9twtJ/0vxMcxgMBLfwuT4n2I6hgOVYkPzr5b8YxiEciHp86g5lZepCqPQJSHMg+OVe/5KWsK06GUVaDSTTcaDBxEozgcZoE3L+KuKyACSpaC0r+18VhLidzIH+P9NxuPMsFqKgu6eIJyCO5lpWNJ9hgGFqPGRzRw9izgUWDSa56xYnTnIt5ijYB6Z7mWb/lRQ8SVLpUuzjM5jiG8EokTrmJ+3A0BVm1R0A7c6Rh5n/c8FKbz3kzJ22M8dTn02CeMcR6ApeRvMa1gRrOMs5rdIFpBfXdpRDDYSZDGc2cCE+exgM4UTba2CUU7URDPJu3+NCQpw3ca8jlZFrpQqp6RUXJkjZlWzqm/TqwC6OZzPtMZ98Q2hrHVxIDWVBvzLDU6LRwsXiKwZzMx3mfHc/kKKPaLWr4WXg0N+6AnoqHa/TsvMJXdMm61pkj/EBI9c0bFGcI07Kat4oWeZ/7LS9jI7GABPWPiJKn5uM8wrP8mvNolUfS3+OZfAxTiAak0k6wK4bSIyfFUr22YxmIbr3xVNiZ9XIoWlopbUu7jF9++rmBa7Bk+V1Qj6nIwWUtv2UAT+dJewMt8i3hFzcUgj7CPJ1VATlawOOGwhxEb7x6uhZWaFxHxSVchCXeH0E9htIHNlwWMIoJ/rdTTdiNU/Pt9CuEgNK32PUwOKDN4cdSxbb5DzNzrtd8J8OqV51QOJbzU64T+hE0GHPMxWYKg0KjSZ9B0/CJulhj4CRiOdfm8q+QbyjawKOG6yfSvhF8muUFDuZpHKEfQQOCjctiTuDywBR7s1/5NKDk3K9I0NIYYOKRvJvrnmZxzrXtOLremWCFlfZbzuMo5hOTPT+CBmaOKWLA1VwSmObgfBxW6NCzUPyUXXLufG+IfZgJl5VGde00nHp5Mj6q1nYFfwK9Niin3xvrUM2FV4GlVAVJd5INYlhcxzUBafYLz6twE8wD40n2Z1kExq15NT94zPDxj/0Z4Bthqp4Ikyqg7f7gd4IKMVEFlWVcmJAomnpMvd60AjV7qwgtX+EA1/A/491WOGFUWwwB9eagnKvVPIpFjCpiIT+bd5lnyHMC9WsxXgV8D8Bch+14kp0a2fdg6zs2Gq7F6FoklXWgo+HOugo2rAqFwwaeDZD+dmH5uQUXDsYZufs3XIqFnafw1exquHosk1mGS/1YC7O0YL3PET63JzWi9Qw1hh/bnoc5gg04ov/UE3zBupxtdhb78EJRGlB7qgx3FlZkzT08wC5QNbGA1cY7LWgW7pcpDAnaGz7CDDEOKKHS23Acd+iPGNcfJX15zrl/mE07fmFIfQCPcAwJOYJRT7CI7wz7fPcBvAKHpgION95ZU3FavUU18Et256wirCOzbDcPNzULN8F+yg61UP2J+vRsfaIg1/CDXwY440cyDUcMsXoBi02sMFw/gq4Fu449mhiihsI3FfZRJgtFNR25n1uYxFkF1jOBRT/jnRXhRGsX2Ji2MQRZ6ejF4AYRniyGYgIfGu+N5i5UBa59CEyjwhR4oiXji9AsRrCn4fo8llbUkZw4CY5gpv7I+vX0LSjIvKKL4evIAN/xfdioLmwntMe+JZlawUqqxWnU1wOayfWt1Cqew2qOCjgtfAa/SFvvkwX5ytWACAg6cQ47hw7M7IXsOM35rTHly1RCSF7l008TbuYFnypbMo1d02qqQp5N/jUxIPjearaG1dMusLATakFHsbR+0LWeGijJ47c1oQtcljCSRca0N3MCibQnhIQqFTP5xnC1IzcSthxvpX3sOOnTnGz8KEHQmlFdGF4J4gxiJudn3NmFGXQn7kdGDBq3SQNsL84LeMPscLumEAKKsy3H1FpTtODYBjEgbcDlC8ayyXDXYSojqTZ0oqCS4LAuIATpaK5BkcjTd5YemBMDPkrwBp9VxLEcC2jDBcxgv5x7u/ACu1ON549LlaO3W0CcNjxAywDOeDX/cImO0bSvxcY4Ld/BtQo3xFSGAL9lDFgLVTzC4Eb1Yer6qtVODZDGSzgTlffbD3HiTOAvATR1R0UYYEn9Z1duCggk042XGYGnpVXp76dm13InnqZ/wBs+ZW74JBu9ERI4nFarzbEHQ+qxBpRpUlk4PMpZAbreVHb0lVtBpepAH/BkQE/fzV00z/oWaLpHJEEcl0uM3wQGmMVLFbHpJLl77T+8HJhiR57hNjqRIJ5Fx8nY54qf8rphY3IKdxMP5xg3YkFtFIPpY7g3jbcCgpCFawvn0C3n+kRerOffyUjfym5zN2241pBqZ6ZxON/r1ldCRRXak7/lyADd4CwGcCXPawpKfmDSSxuiR/BbBgbkXM1leBWzI8ymmskcEkITv2A0D/EoH2fp7e0ZzJkcEZL3IqbmYwY3YmckgNMNhdzA+Swpsuq35lw5iu78t8Fs1nOA69iBcwz39uMfjGCjbEysYLh8yjVcHXC3L9OZy5O8waf+HuCWdKMVB3MoB4bkeyezK2oB3mUOt3JBSIod+A0XM4v/MpPVJGhJb/agHzvnyfki1uaT8KgDwKOzkeueY0lRBwzi/J0rcr6q2oQT+UOD0QgUDh4X0IURhrs/YRrHskUiBFVw/1ncyKEMCUwxgAHAQpZTDcRoQ3dDnKxMfMRlVMo3cVNHqi2uYJDBDZ2pKQ1hCGcUkPv9PJG/ntEbYgzbGK5OKaraCpvFzDDc+xktG8xuYYXCpZqxzDLeP4obUHjaG6BkZ1DF0Y/DVsYZl+PTsSsDOZADGcieeelnKSdXkN5rablzWM+pAWe5isXH/CoKv0QjoARNOcVwfR6vFaGtWDowqSlIfReG0VA26aVC16/jGN4zpjiHX/oRscUPVJlm2GKOYVWZclvB0fwHt4Lk2/LruYCxhlA5xWIRo3wfZ0kElFr/H8LehruPsKUIAyw1179m3Kx3KtTL8GTBbeeykuNZZkxzC6eT0C0isYIqb/qwcJnL8WWhoOWM4B0cqKieVj4FvcjIACktFAsZzsJoep4doRs8MOo/myJ+LdqkAYHNBv5muDuMvRqIKZIevvsLTmaLMdW9nEQirSfEDKu0ScTlVQ7l3ZJ1giOZg1txk0zNDn6HGRxk+IJxoZjFocyL6tuMYoJ5dGeU4foL/Ddv/J/wij9u2OpVpY+7NqyB6PIKxwdQ0N30S/N7iRZUib33AYcZp8uomMoA3qvoNU8LC5dPGcYfSjDFPK5jGIuiL61E8wGNNR40e4jivPkpC9jmI2Yb39amATmiU3B4hlOMtNqKaXSlWrSfCu69GKs4kVMDwo6G43NO4hS+S3NQV24/u2zmCgbx96JG4JscyiVsxYluZOYnkATNOdFw/VP9ieFiZ2wLm4RxVunMkQ1mKGZuTHycC42pduZZOuXbMyqok95LTZcxLP7KQK5ieQE5LONqBvMYFrE0bb9ytVyFi8MHHMdgphhjIgXhfX7GwbyOg6s/vhDJ1Z7fB6Q4it0Mdx5hY5ENWXNi2OIpY7iic3HrlIKsgJYpbc+Ojc3N/Nl4by+ep13aIdXKJdLC9efw9JUeptZKW6x2Wcxv6cevA1Y107GZWZxDHy5nGS5OPdndllyPdbGZwwT6MYmX89LQcp5iBAN5EM/3cVmGc2MBKlc+/cd8Amw1D5XM5BY23/KU4SPPA9m3TneL1hb52XicSwdjUNve3M8xJLJIrlLE1gqw+MuRS/2Kgqn4HzdyM305hP50oZc/6BQWG/iExaxmOl/omFD1Mw64jY3iK+7hHrqyG8PZkZ3o5fOFApbwb5byDO9rw9QtTrDcPAPRYV+9Vc7yd6wkWM+HZWnaBB3ZI8s/ZGHxJYux62z4KRS78SMduSd1zaaaD9laYpniuDxlDNIJN3Fh1sebKyFKpEKxPbv6WyZrqHEeawqYJhR70TKtdsm6laNNf9jWsICEbommdMHGZRvWshnYwmJ/qcFpIJtJUt6gZuyEg0Ub4qzDYhVLfboqemOBFYG34kXpTlE7Mx6im9Xl/G8uVzmEKk47ng84qng5V2Ppw42VFKI2XqQG/UO16Q9NQKn/JgLq0/AOGJvqmv7tjCJrbBUkQipt14D1g3V2w0OcXZkZENz/V9ysh2RlxsiWs/vZxqPVCGpZa3UshoAUsluldAoawCuGD7+Ax/E86TvhrUYzkEWiGiUK/fyYHJgsDxzmMtr4bUybe+nfYCMmqojXBJXRWyrwX3WiAQnKa1OPZJrxm5lfc2gDioskEITMxLL5rW5gYTGfDRxmuNeGETzHShzE5yIQAhLUiilioXibjgww3G/LAfyNjXo9TCAQAhKUWf9Jbkx8gR2NsbY70ZPn2CJBOgQNGeJnqOv2jzOJV2ht2GXRjJasF/oRNOyZWCioro0xL3B1wSkh3IlAIBqQIMIUEObnEfoRNGiIB6gSKEggEAISCAQCISCBQCAEJBAIBEJAAoFACEggEAiEgAQCgRCQQCAQCAEJBAIhIIFAIBACEggEQkACgUAgBCQQCISABAKBQAhIIBAIAQkEAiEggUAgEAISCARCQAKBQCAEJBAIhIAEAoFACEggEAgBCQQCgRCQQCAQAhIIBAIhIIFAIAQkEAgEQkACgUAISCAQCISABAKBEJBAIBAIAQkEAiEggUAgBCQQCARCQAKBQAhIIBAIhIAEAoEQkEAgEAgBCQQCISCBQCAQAhIIBEJAAoFAUF4CUtJAAoGg9uBGSuXh+YRlYWHloSYPlUNfFk4OvVl53ptMoUC/0cq6m8ig0ijaXG4uqdKpgFopbFTau2ystDyC8iNizTz9Tgs7I1crQm/UlNfSzwe/Tfk9CODkLbMXUTvO7IMovaB0OmXsUatskp1qYTuPrCrdfiqipKTuevodyV+5yqz0yMmUh+CW8QLfrvBwAmuh8LQkB9fPjlgvhUXC71ersBFhhVJQsoGrgZjOeIt+jRPQrQqHrX769EG8FYWjB3r6+6v1X7GsHOM+RSrD0EwOwt3ZgV1oxWcsZ24ayanATkn4tJueJlUK19gCtl8jhecPOCeCeOQfvBZVKGBrDk0HiU4cqMp569ZAWlFAAuhBZ/bEYj6LmRfah+ltH4440II+tKY7m1jIat7L+1x23kpLVkJTZAyvxAFdI1P5p9e4TmcZpc8NmJSSfWDhpcmDXQZ3Rhxb119lSaQKlAXT1F7TyrGAPg7v4dQU50aayJOjqiqNHzLl2CqegJJM2JubaaNfuJFV3M9TgVVTeOzIXXTO0SKqeZY/4mVpD4rtuZp1XMDWjJJ4VHE5u3MF83FyKhEHDuYchtHKv/Y29zAldHZXJJjAWO7liaxUCYZxEM8zO6c1kuy+HbfRDQvw2MAGpvMiX4d0b5Q5w8PiUo4mhsJiA3FeZwZv5R2+E5hEk5z81nA+/zEIYrLWB3IBQ2mur2xiBvfxnE/E2USXYBfuojWTecWYY42Q7sbpHMmeae96mwd5iC0BdVBACybTmQtZnJFGYXEaXbibb0rWKBJ05Ra24XLeyDO9JhjDeKbyt7R0Cos4gzieZ3jN+HyCdtxODywgwSY28wwvsyCEsKJORxdzLDE8bDw2MJsH+CxEnhOM4Rf8l5+zMacHB3AlTbmIucZpJsFILmYRP2e1oYc9mnEjvXmMO/JqM8np7WwmUIXCZgPVzOE1XiUeQc/WLBf+g+u1aljze4wmWMbUMeCmnPSpX6es9znA31Ao/gLYGdcvQaF4BTfteqpETbkJz5D/P3LekPnc3sRRbKFPRiqLXdmKYgXbGWsFP89503dcxzYRWi+sXfvk5JpgBv0yWiLzZ9GCzwLa9rGc5xzdkmeTMKR/kB2BmLFk56NQzAkpCcDPWGksyT/pHSAdLnCezrsVFq5+vwOcgELxVMg7o/0c4AEUivdwA8uRLMsOrEWhOBB0eyWv78RyFKvoauzhVPuk/77nHrYrUR66sDEr1zWMAb9c2ek78D0KxRjDqLoPheKvxhLZwDsoFKcF1G9v/f6ukfhhJzbltMdsDtbqTZ5fFLUxN80Y7s7yKqRsewV0CsjnGzbl6F9oVXMiY9PyS3AYv/O9G0pbx6l7zXmMC3x2XcLXvgHzU15mO+KBzLsbDlDFVFr4Sigo2hADWtE6YP7KnQc7cBGz2Ie4P0cUPvN1NLT0UN7gVN8zlDvftKZZQG4LjLNVgmO5U/fgV0zhLj7VdybwAu2yPDiZPW6Heoju4X620f9ez9cs9u/uz7O0JW6og/JrvS+/T+tTgB0B2KlkMyZBB44GoA+98xgAO9ICgAfp5EuNAnamI9COrgHPtcq50pozeJO90qSqcLTLKWsbHqZ/QB9BTGsvbQOXjlRoD0K7QKUkAXjEIvisoA1Nc+4M4nUuROU3p928r0hVYx734vIjxrMdcAq3836GiNZ0X7WmmzupTst/MzNZi5sjEpdzAF2A2/k3HxPDI0F7bqMJsJUrdR5WWpVvYBQA1Uzhcd5lK3sykkl0AHoyleHEcwZP8q0p8ejJzZyZVhJP5+cF2Kyepro72EQHDmYgNrAXL3EI8/LY6WGqazLve5lPM/ZjENsCzXgAjykBuaZo/xle9w0xC8UyHjc4DRPEuFLT04W8whYgxsH8hiFAd5qyWrdU5ls8/XSwWf4HztD/epOH+Cdf49KX/Tmb7YDOBpHM9j78kjlMS3tr3PdllYoRtNd/ncA7oUMgTpwqYBdu43g832Ed162QCCQ5gLXczne042AGUgV042WG8VHEhR1zaQCm8i4xDmQk4PBbRuEZJ4OURzNumNZVJAJKhC4UeL5DPHjppiYveJQ5NGMfBuvJ5AZsrs/vGcuv0N6AQvG4Tv9jVqBQXBDwLExBoXjB+C4nQ6F0cIGR2px6gyba/n9OK3IXZqjGydyH63srGZrRDLvwL33nN4aSpd5UoySe4KeCfVAo1tMtQCU9V5sWNXP8bJ3LHKq0oukEqMrB7XooCsUW9vDn4zt0rlvY1y9JZu234ysUitMNWoup5D8hgWIVvfzFg6QDfRIvcbSv3jtGE+PtAPUfBlOtV9bOzRKwHbiPWVxOLNBw+J3fA9/QRdfSAX7pv7MUE8wGXvPfsIiWoSZ5f7b4ac8CHBwcYH9duwMC5OEyFIr5ft37M0Pn8jltoxgeAYbPehSKQ3Su96JQrKK9sR9gO22CTQw0wR4INMHeRqE4P6B++xBHUU03/eZg2XaAnrruP/Gtg+vYrK8Nz8cw0T33McDB5t/8F4DuecyOKm0DOhnWdTovJ2ddm6e5AYADuBmF4uccpWf52/z5uWZh8XdaWzmGl9OaxeELhvMFAL+iUw635/L3neweYqyZDRNLt8FshvGsNiUmlbhbyqK1Fv3/cQ7j2QpUcS0xf7HdhOb+cHG0eJiXm3fEBr7lP7rkSa9Pgrs5nGdwde6FtIKiimtxAY/TuR0vQxy/YSIHcVWklazO3K9n4fItvnv0YpD/ry4cETn3q+lFoqCSOLTVrfoOh/MgALvyiyzTsnC01JbJHbq9mxfRQqXKZObfwcsCVpZh6uKwgosZxToArqVVoJ6Vx843KW0JPJqyLQBLs8gku9oq7yJ1UrWzsfg9/wLgTA5hT24FYAVnUa13Q6SGicdAegNwDzN9L7vSVPcdfwCgPcdG6ID23E7M6KkI7pZkZ9jE2MAp2ptyJlXaE1TcMFL+ThQXm4e4E4CDGZzlYzMLmJW278L0/n+xCdiDq7FJENeL3TWzV+GCnKAP+wPwEPdjE8sojYuDFbj+kZ3bIVxqlI7iV5JgJE2ADWzU3koCPWrZHpi7cQuaklI9Z+PgMYm5Wh7apA25YmqyWZtVg/UIrQ5oHxVhibw42lI5xhyBXsnsv5My8JI2/XtyZHgbRCegNuzBnvTnYXYBErybUU0rp4hbAEWcBAni2r5VWQPV0jPJRiaxBXD4K3/HBeKMZYnBmu6DDXzPncZGnsZ8AAaGdv1q3gZgKJcXMVsl7WKX1Zru9tDDsRywgBtYAcDo0DpsBr9lE8SNGoeFxQL+D7C5lDf5FT3pqJ8pXkjR+qnHTYCjJ6a4/0vkbE404QMWAPA79jMMsOL1nypOBOAFbtQUt2NevcbjDS01t6V5NArbVOGylasA2J4hoZp3fuzKHvTgNC1fC1hJXUGVIMd38DkAx4XnE91hdqge3Kk1l+fTtBgr7e8U9uEylCa4KlYwna/1pkJTKT7kbO4HdtBXbmGGwZEMwwBYxAJD17psYiY9gEG0ZU1g3TzO43b2BS7hX0ZfVTT19GWWsD02fXm9DF2d1GQcvuVpTgN2xcIL1FKOph0xvRUOljCNrTktonCIcyF92AkYxCBu5Cs+YCav8nFBfZ/ZB9sB8C6f6m2lHh0YRBPfXbmZ9/k2j371CTfxNk2IMYUBfF+m4aI4UHvUpvARl1BFG0ZzWx6d1mYyv+Yo4Gxe5LmC32vrMTCTz9gN6MH0kgj+zox/PZCxlFNf4LKJR5kM7EwTtgZLQ7FV68wZ3OsPG3OKqzL+fSoHsS6wIDYPMJQx+l+zuQwL26Cet8vwuwd5/zvQjDWBZW/Kt5zKv4lRxT304buiWsDhOz5me22zq5J379b8Pzkce7FNyNx3lNZDUujEtUbDJ8ZCDuQqTtJ03oUujGIzT/BH5hfR+x4WuwAwX28dTdCU6Vla4PsMYV3oVv52fMBVXAnsxo2cTrnOHZ6IBXzLm6zlPQYCY7lDryIF99FmTuNjOgAPsw+LCuzL1CGEdSxlN6BbHtdDYRjPyyyqdxRkgR5X29ORb8phgiXYyGZ/J09b7uHwghyIe9Ey0OBJakpnaR1rKadTjWPM2wpRblWaHRqOtsznQgB24K6C1O7cHdmUXTiSfdJCH7gw+R1ysUNgrV2+Yhz9uJbZvqbRlHHMZVxJu1ZqStSUAca+tvK041W8CsBEji+LIzpBR44E4GnWAlMA6EvfvP3bmmVcrB0Nd0DRRqGtW7eGfIqh1Wo2sdk/1DCYe3GLMAzrFgq0spHH1xidgF5jL/qwD4dyt27WK2iq99iaZ5Wv0n6fcgZLQzdnu6zhMQD+w/zAQi/xh7x5m1ty/8nXrI9goyaNr2M5oSgTIEFzvd9hPZTxOGIK81gRsrF/VUbrvskdAT2pSB4Q+IDfcBC7cxiT+QCAlkyhf8EUZKP0KmhPYsQBh7XczLcsZzlLdUtuDtFR0zFR9+dd7FQWM2wk2wGbuF97BNcAtvYK5eujB3hE65YTQrTnMN0QvXHvC/Atg2Lk4jz2pi/9mKgn5KGMDyWgREBp6pZ+UnVfFd6z0QloLV8yn894lbO4GgXsx576uKoJ/2R3dqOH/v2YB0NUciuSRmEBMwDoxkDj+kxrDgPg7RBjL9VAHqfq3bt3MYDNRTjierM3QJiCWYQYuxyg/VzVht5JtfbVdPfbdg8OYkFgTybnIheXBMuYwZXsyymsAyzOwypQVC2/vv3o65foEnrRmx/Tk1MLymsR5wHQnlv8XdXFiruHzVgt05cxnaeYqneNH0PrCG5xOIfPAPgTo9gaom0GlWJvLQ9flygDX7CQT/iY+zlUu+rHGuXQ1iPFtDc+VuDoLrcBlgC9n2kpa8LKEb2IDvini27TGsY+IUM0wRa2skn/tuRd9K1R2sIG/vskgGacq1leZSxJTtRO7JmGuUflaFzL9R6ebbgzxIyysv6l/BlmEgDf83KocVTYMFKM1gN7FmFL+9VU+227OYS0k2tkqZW75K+aqZwLwEE0NxJQ+Lz9tH7md6A1YIcVLGEpq1hWkJja/F27iEdzaeT35+aTnFD20NTdhFGMZBTD9V7xHRkSYBCmS4/LGiaxGWjF5EhmtZXVe+fSHNjI7BKHb1PQ5yqXcLfWVu2MfrK0SvC5ngrSJRM8muuVuE1FeiKDJFRFkuPkYsT+HO6PxbIQULpjLRGhKEkFNP0gZTmY9V1mAnA84/DSzu8o4uythfhLnsmJM6MMDe3wnN5z1DGyHyd1pMNjNCcBMJ1lkXbURBlGcfbgem1q/iN0yNiQtR/VrE9ty2kMJpFx0skFPbM2C3hShU5E83gJgMO4UYcUsfy95lH2LmV6/ibzb4ASNKDU4Ds+sB3GRZBZhcPrXAtA84jjwvLn+wSjtfb3Ep+UKUKQgkATWeGyQVPdKHoQ9xeEPGAcXQD0SnX53MpEHPfVbMtduMBGvUEzxPMSFfE0a3M0LQH8g41BlqnKaMDSI6Y4xPk9B1CFwxSac09a/kN4SJ8B+iNrskTRCqSSixnIfobr5hp5uh0sTudWbKCa60v0AFls8gVtX/6mRecqVhr7JiXaW3OE0zUS0J84gQRXcz0b0oZqGz3QPmJjwX1ikWAyw3CBX1HF7zPW6rqkDR4VooWmlqld1vJzZpVM4QmacgIAn/GEXyePPhwBDKULX+WR9eSC/LUM0I7sKObyBr8XTuXPuEA1V4IhgEw0wlHag5bK1WECAFtyToMlc3+Us4B23MtJ/C9tJFwDwOe8WSIRbszxMIW1YU25e/CoPvxzB4vC+9bNy8EptKWHXnY9gJuwga+YlxW3LR2t2TMtTp9FQofBskowVSxs3uSPXAFY3M1xTGM2Ft0Zx091msf5S+Rmd6jmbF7LOE8c/GxL9sLD4kBO4CB97Ww+0Q1cqNlQY3T1wMOmE2M5Ua98PcWfA53Kyad2Ys+Mjl1p2LaZPNcNDpMZyd28wUKq2ZW+XEQfAO4kHkBz4TLzHhdq3fFcjuJJXmQ5FvtwpO6FpnlpzU7LbTbn6WMHpWB/vQPo2ow5twdDcWnNKONuoGxNxWYL5/B+zvlyM5rQm7XYDGCsfw7qfD40bh+JgtQE3Y3/4eDRmou1efWM0VZx+CdPcBwwmDnczEtAM8ZzhjY9r+D7Asa3qXV60TZNyhSfszkrx/R6duMbbLZhDGP0dpk5TNbbaULFKezIpANcp4/mZcf8ODntaSftyOcUY5SYBLfihBw0dIArUChehZDjbzYxHgqMOPQ27TBHuXGBUSgUG+hF+nGEifrZ9XTHfDjvnIC3XQwFHUHNzPXQgFxfpQ1Bx0B/pA+jZv8Wc7ThEKTFfnyeluod3mSD/6+HA/oj38HQGDZwYWAfKGbRNOBIJvwBheJFP+9kbtP9w73FHEZ1sPTxy2V0SOtDG5tZOj5Nbmwg2E8fqh0KafJ7vC6Lx0EB8nBpQL1vovijtPBj3TfZI+1j2mSVveZsZTv/WHT276pA2Yx6GDX3N5edDNG5egaUYC47QTniATUzzoo383DaupaVMTOY+f08OuVZc7FCnq/Jp5pxnM9qw71bOZzVgfuta8qnMnSq+/QCbLPAWcIUXGIR47guzaxURcx4JrX+JkbwfaDPLChGy/aclROhCRzmsD+3+3tK+jHYj4t4N6eQCNBUqkLaI+m7sbmRUQEm+KOcwOZAxTumvSw1NUruAVviO2ALh4fDcO2BWZEWA9DG033bj50MPZSaz9P9GzbTuC/LrRvFbljMKfzKGB41upOjiWGkLeRYvjcaYOCymqN50ZDXlVyOFbLu3DzU/nECatE/I2pXuimdi4cZytdRXDz5NaBxaUELFIpNvM9JRq5PziBjstKnfq/QInB+SD45mmoSXBqqAbk63nR3buYLHYttK9/xsPb8B9fGogPvoHiBZlj+GxzgRyxA8SYtDfO2AxzGurR6rONDLgoIkhD9Z9GedzNadQn3aH9U2Ex/h7Ft4/w85zlHR6iEXtzE5zrYwyZW8rBeIg2aiw9jI4rrQ2voAK2ZxMus0fPlJlbwkD4sEzzPH8FGFJdlpYFhrMLj2qJa1cbiQRQrsmJdulhsy0IUL9IsR/YsmvB/KObRESvtrdCc2SjeztE8Uvf315EUU5rzJ/ye7SktkIhFFc/mxFl8KG9UQnA4nZlaQhOs4QmGAFaAHZDsubtRrAoIN2LRkflGKVtJv5wnbJqnBUBRbGE5U7VJGstfbytCSLIE/emcFvf+cxayJdClrEjwY7pqJ3TK0rbYyBzWB74tuXSn6E+M2ZHi8ceBVnRmV2yW8BUrIri543SkH3NYnVWOOO3pzXtae7JyOD7B3uysw4Gs5Qu+Y5M/f1hFx4VOsC19iKFQ2CxkKavy1sHD5sC0PeXJdouxlH8Fzr3Jw6GtaE93qviC7/K2VZy+tOSfeb1BSZfjdnTlR3gsZHnenBUJetGOWTmSEKcn2zC7yBUkD5f9+ZYFWfkqEuxIT95irUH2ErRiIPP4Jkce2tKfD/kuQF7j7Ek3rT9uZiHL2EDpO+ITNOdAqrTb12Yj8/g2JN+UpCaXRXakO61YzhcsJd93TxQ2B7CUTwLrtx39IeeI8wI+NzwRpx39aKo10a/4hpXRl5ysCM3mGQynsHDswaeh3TxLqZ7+HIwdeQinq41RBNe81bHmqxhB+0USRa8e5i9NYXUIWk7OT77R0ybrG60f4gXWIJm3Y3BNxktaKU34Wwyi9Xn6vZixLGFSXkzPFS4P0fONFyVFbshCepBxZpW3NayIQ0mV+BEaS29QipKuMD2iZk2pNBFQOZ8MMlm60c6aFfbWwtpV5WyAS3k7onzBwIr4prDWCCtPIfLww8EK3BZgFV0LlfEtOasWSp2MllVZHwcNHiFWce1o1co529LPhqsC31PaG1XeoWvVWdfWRlmifhKyoSPdhVq8KU0ttVVxe4msOm9Tq7Ch7iIQCAR1AluaQCAQ1BVqS/8xnb0SCAT1y0Ct9TFcWwQklCMQ1G/8IGNYTDCBQFBnEAISCARCQAKBQAhIIBAIhIAEAoEQkEAgEAgBCQQCISCBQCAQAhIIBEJAAoFAUDT+Hw3y/ISMNo9DAAAAAElFTkSuQmCC";
 const ARTIUS_LOGO_W = 576, ARTIUS_LOGO_H = 192;
 
-/* ===================== HẠ TẦNG API: retry + backoff + đếm call/cost ===================== */
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const backoff = (attempt) => Math.round((600 * Math.pow(2, attempt)) * (0.8 + Math.random() * 0.4)); // ~0.6s,1.2s,2.4s + jitter
-// Bộ đếm dùng chung cho MỌI lời gọi /api/* (module-level). Component đọc qua snapshot.
-const API_STATS = { calls: 0, inTok: 0, outTok: 0, at: 0 };
-let API_ON_UPDATE = null;   // component gắn callback để cập nhật UI realtime
-// Giá ước tính (USD / 1 triệu token) — CHỈ để ước lượng, chỉnh nếu bảng giá đổi.
-const PRICE_IN = 3, PRICE_OUT = 15;
-function estCostUSD() { return API_STATS.inTok / 1e6 * PRICE_IN + API_STATS.outTok / 1e6 * PRICE_OUT; }
-function accountUsage(data) { const u = data && data.usage; if (u) { API_STATS.inTok += u.input_tokens || 0; API_STATS.outTok += u.output_tokens || 0; } }
-function resetApiStats() { API_STATS.calls = 0; API_STATS.inTok = 0; API_STATS.outTok = 0; API_STATS.at = 0; if (API_ON_UPDATE) API_ON_UPDATE(); }
-
-// POST JSON tới /api/* với retry+backoff. Trả về JSON đã parse khi OK; NÉM lỗi rõ khi thất bại.
-// Chỉ retry 429 / 5xx / lỗi mạng. 400 (hết credit) / 401 / 403 -> lỗi vĩnh viễn, không retry.
-async function apiPost(url, body, opts = {}) {
-  const tries = Math.max(1, opts.tries || 3);
-  let lastErr = null;
-  for (let a = 0; a < tries; a++) {
-    let res;
-    try {
-      res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    } catch (e) {
-      lastErr = new Error("Lỗi mạng khi gọi API (fetch thất bại).");
-      if (a < tries - 1) { await sleep(backoff(a)); continue; }
-      throw lastErr;
-    }
-    if (res.ok) {
-      const data = await res.json();
-      API_STATS.calls++; accountUsage(data); API_STATS.at = Date.now();
-      if (API_ON_UPDATE) API_ON_UPDATE();
-      return data;
-    }
-    let detail = "";
-    try { const t = await res.text(); try { const j = JSON.parse(t); detail = (j && j.error && j.error.message) || (j && j.message) || ""; } catch { detail = t.slice(0, 200); } } catch { /* bỏ qua */ }
-    const err = new Error("HTTP " + res.status + (detail ? " · " + detail : ""));
-    if ((res.status === 429 || res.status >= 500) && a < tries - 1) { lastErr = err; await sleep(backoff(a)); continue; }
-    throw err;   // 4xx (kể cả 400 hết credit) -> dừng ngay
-  }
-  throw lastErr || new Error("Thất bại sau khi thử lại.");
-}
-
-/* ===================== CACHE KẾT QUẢ PHÂN TÍCH THEO HASH ẢNH ===================== */
-// Hash nhanh (djb2, lấy mẫu thưa vì base64 rất dài) + độ dài -> khóa cache trong phiên.
-function hashStr(s) {
-  let h = 5381; const step = s.length > 20000 ? 251 : 1;
-  for (let i = 0; i < s.length; i += step) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
-  return (h >>> 0).toString(36) + "_" + s.length;
-}
-const CACHE_VER = "v1-sonnet5";                 // đổi khi prompt/model đổi để vô hiệu cache cũ
-const ANALYZE_CACHE = new Map();                // hash -> items (bản clone, KHÔNG giữ id); mất khi reload
-function cacheClone(items) {
-  return (items || []).map((it) => ({ ...it, id: 0, instances: (it.instances || []).map((b) => ({ ...b })), memberBoxes: (it.memberBoxes || []).map((b) => ({ ...b })) }));
-}
-function withFreshIds(items) {
-  return (items || []).map((it) => ({ ...it, id: nextId(), instances: (it.instances || []).map((b) => ({ ...b })), memberBoxes: (it.memberBoxes || []).map((b) => ({ ...b })) }));
-}
-
-/* ===================== IndexedDB: lưu/khôi phục phiên ===================== */
-function idbOpen() {
-  return new Promise((res, rej) => {
-    try {
-      const r = indexedDB.open("speclens", 1);
-      r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains("kv")) r.result.createObjectStore("kv"); };
-      r.onsuccess = () => res(r.result);
-      r.onerror = () => rej(r.error || new Error("idb open error"));
-    } catch (e) { rej(e); }
-  });
-}
-async function idbSet(key, val) {
-  const db = await idbOpen();
-  return new Promise((res, rej) => { const tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").put(val, key); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
-}
-async function idbGet(key) {
-  const db = await idbOpen();
-  return new Promise((res, rej) => { const tx = db.transaction("kv", "readonly"); const rq = tx.objectStore("kv").get(key); rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error); });
-}
-async function idbDel(key) {
-  const db = await idbOpen();
-  return new Promise((res, rej) => { const tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").delete(key); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
-}
-
 /* Nạp ExcelJS (bản UMD, expose window.ExcelJS) từ CDN — KHÔNG cần thêm dependency vào package.json.
    ExcelJS cần thiết để NHÚNG ẢNH crop vào ô Excel (SheetJS community không hỗ trợ ảnh).
    Thử lần lượt nhiều CDN; nếu offline/chặn mạng -> reject để caller rơi về bản xuất cơ bản (không ảnh). */
@@ -838,13 +757,18 @@ CHỈ trả về JSON (không markdown, không giải thích), dạng:
 {"groups":[{"members":[1,3,5],"loai":"ghế armchair","nhom":"Nội thất"},{"members":[2],"loai":"bàn trà tròn","nhom":"Nội thất"}]}
 "nhom" chọn 1 trong ["Nội thất","Đèn","Vật liệu bề mặt","Cửa & Vách kính","Hardware","Trang trí"]. "loai" là tên loại ngắn gọn tiếng Việt.`;
   try {
-    const data = await apiPost("/api/analyze", {
-      model: "claude-sonnet-5", max_tokens: 1200,
-      messages: [{ role: "user", content: [
-        { type: "image", source: { type: "base64", media_type: "image/jpeg", data: montageB64 } },
-        { type: "text", text: prompt },
-      ] }],
+    const res = await fetch("/api/analyze", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-5", max_tokens: 1200,
+        messages: [{ role: "user", content: [
+          { type: "image", source: { type: "base64", media_type: "image/jpeg", data: montageB64 } },
+          { type: "text", text: prompt },
+        ] }],
+      }),
     });
+    if (!res.ok) return null;
+    const data = await res.json();
     if (data && data.type === "error") return null;
     const textOut = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
     return parseGroups(textOut, n);
@@ -972,13 +896,18 @@ Mỗi ô thuộc ĐÚNG 1 nhóm; mọi số 1..${n} xuất hiện đúng một l
 CHỈ trả về JSON (không markdown, không giải thích), dạng:
 {"groups":[{"members":[1,3],"loai":"ghế bành đơn"},{"members":[2],"loai":"ghế khác"}]}`;
   try {
-    const data = await apiPost("/api/analyze", {
-      model: "claude-sonnet-5", max_tokens: 1000,
-      messages: [{ role: "user", content: [
-        { type: "image", source: { type: "base64", media_type: "image/jpeg", data: montageB64 } },
-        { type: "text", text: prompt },
-      ] }],
+    const res = await fetch("/api/analyze", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-5", max_tokens: 1000,
+        messages: [{ role: "user", content: [
+          { type: "image", source: { type: "base64", media_type: "image/jpeg", data: montageB64 } },
+          { type: "text", text: prompt },
+        ] }],
+      }),
     });
+    if (!res.ok) return null;
+    const data = await res.json();
     if (data && data.type === "error") return null;
     const textOut = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
     return parseGroups(textOut, n);
@@ -1201,10 +1130,6 @@ table.sched { border-collapse:collapse; width:100%; min-width:1000px; font-famil
 .grp-row .icon-danger { flex:0 0 30px; width:30px; justify-content:center; align-items:center; padding:7px 0; }
 .grp-row .axchk { margin:0; flex:0 0 auto; }
 .toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:14px; } .toolbar .spacer { flex:1; }
-.api-meter { display:inline-flex; align-items:center; gap:7px; margin-top:8px; font-size:11.5px; color:var(--faint); background:var(--input); border:1px solid rgba(255,255,255,0.07); border-radius:8px; padding:4px 10px; font-variant-numeric:tabular-nums; }
-.api-meter .am-dot { width:6px; height:6px; border-radius:6px; background:var(--ac2); display:inline-block; }
-.api-meter .am-reset { background:none; border:none; color:var(--faint); cursor:pointer; font-size:13px; padding:0 2px; line-height:1; }
-.api-meter .am-reset:hover { color:var(--tx2); }
 
 .note { display:flex; gap:10px; align-items:flex-start; background:var(--amber-soft); border:1px solid rgba(224,164,74,0.28); color:var(--amber2); border-radius:14px; padding:14px 16px; font-size:12px; line-height:1.55; }
 .note svg { flex:0 0 auto; margin-top:1px; }
@@ -1492,60 +1417,6 @@ function InventoryExtractor() {
   const [projectCode, setProjectCode] = useState("");
   const [dateStr, setDateStr] = useState(new Date().toLocaleDateString("vi-VN"));
 
-  // B5: bộ đếm call + ước tính chi phí API (đọc từ API_STATS module-level).
-  const [apiStats, setApiStats] = useState({ calls: 0, inTok: 0, outTok: 0, cost: 0 });
-  const restoringRef = useRef(true);   // true trong lúc khôi phục phiên -> chặn autosave ghi đè
-  useEffect(() => {
-    API_ON_UPDATE = () => setApiStats({ calls: API_STATS.calls, inTok: API_STATS.inTok, outTok: API_STATS.outTok, cost: estCostUSD() });
-    return () => { API_ON_UPDATE = null; };
-  }, []);
-
-  // B1: KHÔI PHỤC phiên từ IndexedDB khi mở app (dựng lại ảnh offscreen để crop/thumb hoạt động).
-  useEffect(() => {
-    (async () => {
-      try {
-        const s = await idbGet("session");
-        if (s && ((s.rows && s.rows.length) || (s.images && s.images.length))) {
-          (s.images || []).forEach((im) => {
-            try {
-              const el = new Image();
-              el.onload = () => setReadyTick((t) => t + 1);
-              el.src = im.preview || ("data:" + (im.mediaType || "image/jpeg") + ";base64," + (im.imgData || ""));
-              imgElMap.current.set(im.id, el);
-            } catch (e) { /* bỏ qua ảnh lỗi */ }
-          });
-          setImages(s.images || []);
-          setRows(s.rows || []); rowsRef.current = s.rows || [];
-          if (s.meta) {
-            setProjectName(s.meta.projectName || ""); setProjectCode(s.meta.projectCode || "");
-            setClient(s.meta.client || ""); setLocation(s.meta.location || "");
-            if (s.meta.dateStr) setDateStr(s.meta.dateStr);
-          }
-          if (s.activeImgId) setActiveImgId(s.activeImgId);
-          setStatus("Đã khôi phục phiên làm việc trước (" + ((s.images || []).length) + " ảnh · " + ((s.rows || []).length) + " dòng).");
-        }
-      } catch (e) { /* không có phiên / trình duyệt chặn -> bỏ qua */ }
-      restoringRef.current = false;
-    })();
-  }, []);
-
-  // B1: TỰ ĐỘNG LƯU phiên (debounce 800ms) mỗi khi bảng/ảnh/thông tin dự án đổi.
-  useEffect(() => {
-    if (restoringRef.current) return;
-    const t = setTimeout(() => {
-      try {
-        if (!rows.length && !images.length) { idbDel("session").catch(() => {}); return; }
-        const snapshot = {
-          v: 1, rows, activeImgId,
-          meta: { projectName, projectCode, client, location, dateStr },
-          images: images.map((im) => ({ id: im.id, preview: im.preview, imgData: im.imgData, mediaType: im.mediaType, fileName: im.fileName, status: im.status })),
-        };
-        idbSet("session", snapshot).catch(() => {});
-      } catch (e) { /* quota/lỗi -> bỏ qua, không chặn app */ }
-    }, 800);
-    return () => clearTimeout(t);
-  }, [rows, images, projectName, projectCode, client, location, dateStr, activeImgId]);
-
   const fileRef = useRef(null);
   const imgRef = useRef(null);   // <img> đang HIỂN THỊ (ảnh active) — chỉ dùng để lấy kích thước hiển thị
   const wrapRef = useRef(null);
@@ -1755,18 +1626,27 @@ function InventoryExtractor() {
     const pic = apiImageFor(imgId);
     if (!pic.data) throw new Error("Ảnh chưa nạp xong, thử lại sau 1-2 giây.");
     let res;
-    let data;
     try {
-      data = await apiPost("/api/analyze", {
-        model: "claude-sonnet-5", max_tokens: 1000,
-        messages: [{ role: "user", content: [
-          { type: "image", source: { type: "base64", media_type: pic.media_type, data: pic.data } },
-          { type: "text", text: PROMPT },
-        ] }],
+      res = await fetch("/api/analyze", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-5", max_tokens: 1000,
+          messages: [{ role: "user", content: [
+            { type: "image", source: { type: "base64", media_type: pic.media_type, data: pic.data } },
+            { type: "text", text: PROMPT },
+          ] }],
+        }),
       });
-    } catch (e) {
-      throw new Error((e && e.message) || "Lỗi gọi API.");
+    } catch (netErr) {
+      throw new Error("Lỗi mạng khi gọi API (fetch thất bại).");
     }
+    if (!res.ok) {
+      let detail = "";
+      try { const j = await res.json(); detail = (j && j.error && j.error.message) || ""; }
+      catch { try { detail = (await res.text()).slice(0, 200); } catch (e) { /* bỏ qua */ } }
+      throw new Error("HTTP " + res.status + (detail ? " · " + detail : ""));
+    }
+    const data = await res.json();
     if (data && data.type === "error") throw new Error(data.error ? data.error.message : "API trả về lỗi.");
     const textOut = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
     return parseItems(textOut).filter((it) => !monExcluded(it.mon));
@@ -1774,7 +1654,12 @@ function InventoryExtractor() {
 
   // TẦNG 1 (grounding): gọi /api/detect (Gemini) -> danh sách vùng {label,count,x1,y1,x2,y2} trong [0..1].
   async function detectRegionsApi(pic) {
-    const j = await apiPost("/api/detect", { image: { media_type: pic.media_type, data: pic.data } });
+    const res = await fetch("/api/detect", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: { media_type: pic.media_type, data: pic.data } }),
+    });
+    if (!res.ok) throw new Error("detect HTTP " + res.status);
+    const j = await res.json();
     return Array.isArray(j.regions) ? j.regions : [];
   }
 
@@ -1782,16 +1667,18 @@ function InventoryExtractor() {
   // hintLabel = nhãn tiếng Anh do Gemini gán (vase/tray/basket/pillow...) -> giúp phân nhóm đúng.
   async function readCrop(cropB64, hintLabel) {
     const promptText = CROP_PROMPT + (hintLabel ? ("\n\nGợi ý loại vật (từ hệ phát hiện, tiếng Anh): " + hintLabel) : "");
-    let data;
-    try {
-      data = await apiPost("/api/analyze", {
+    const res = await fetch("/api/analyze", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         model: "claude-sonnet-5", max_tokens: 400,
         messages: [{ role: "user", content: [
           { type: "image", source: { type: "base64", media_type: "image/jpeg", data: cropB64 } },
           { type: "text", text: promptText },
         ] }],
-      });
-    } catch (e) { return null; }
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
     if (data && data.type === "error") return null;
     const textOut = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
     const items = parseItems(textOut);
@@ -1800,16 +1687,18 @@ function InventoryExtractor() {
 
   // PASS BỀ MẶT: đọc TOÀN ẢNH, chỉ lấy vật liệu bề mặt/hoàn thiện (sàn/tường/trần/rèm/sơn/đá ốp...).
   async function readSurfaces(pic) {
-    let data;
-    try {
-      data = await apiPost("/api/analyze", {
+    const res = await fetch("/api/analyze", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         model: "claude-sonnet-5", max_tokens: 1000,
         messages: [{ role: "user", content: [
           { type: "image", source: { type: "base64", media_type: pic.media_type, data: pic.data } },
           { type: "text", text: SURFACE_PROMPT },
         ] }],
-      });
-    } catch (e) { return []; }
+      }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
     if (data && data.type === "error") return [];
     const textOut = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
     return parseItems(textOut);
@@ -1868,26 +1757,15 @@ function InventoryExtractor() {
     return callAnalyzeSingle(imgId);
   }
 
-  // Bọc callAnalyze bằng CACHE theo hash ảnh: cùng 1 ảnh (nội dung không đổi) sẽ KHÔNG gọi lại API
-  // khi bấm "Phân tích tất cả" nhiều lần. Kết quả lưu bản clone (không giữ id); mỗi lần dùng cấp id mới.
-  async function callAnalyzeCached(imgId, fresh) {
-    const pic = apiImageFor(imgId);
-    const key = pic && pic.data ? (CACHE_VER + "|" + hashStr(pic.data)) : null;
-    if (!fresh && key && ANALYZE_CACHE.has(key)) return withFreshIds(ANALYZE_CACHE.get(key));   // cache HIT -> khỏi gọi API
-    const items = await callAnalyze(imgId);
-    if (key && items) ANALYZE_CACHE.set(key, cacheClone(items));   // luôn cập nhật cache (kể cả khi đọc tươi)
-    return items;
-  }
-
   // Phân tích 1 ảnh rồi GỘP kết quả VÀO bảng hiện có (không thay thế).
   // Đây là mấu chốt để món/vật liệu giống nhau ở NHIỀU ảnh gộp về 1 mã duy nhất:
   //   [dòng cũ (đã bỏ box của ảnh này)] + [item mới] -> mergeRows theo (prefix|món|vật liệu) -> codeItems.
-  async function analyzeOne(imgId, fresh) {
+  async function analyzeOne(imgId) {
     const im = images.find((x) => x.id === imgId);
     if (!im) return 0;
     setImages((prev) => prev.map((x) => (x.id === imgId ? { ...x, status: "analyzing", err: "" } : x)));
     try {
-      let items = await callAnalyzeCached(imgId, fresh);
+      let items = await callAnalyze(imgId);
       items = normalizeDecorList(items);   // Trang trí: tranh->AW, cây/chậu->GW, loại bình/khay/gối/sách/giỏ/nến
       items = mergeSameImage(items);   // C: gộp trùng TRONG cùng ảnh, CỘNG DỒN số lượng (trước khi gộp xuyên ảnh lấy MAX)
       items = items.map((it) => ({ ...it, srcImg: imgId, instances: (it.instances || []).map((b) => ({ ...b, imgId })) }));
@@ -1996,7 +1874,7 @@ function InventoryExtractor() {
     if (!activeImage) { setError("Chưa có ảnh. Hãy tải ảnh phối cảnh lên trước."); return; }
     setLoading(true); setError(null); setStatus(null); setSelected(new Set());
     try {
-      const n = await analyzeOne(activeImgId, true);   // đọc TƯƠI (bỏ cache) vì user chủ động phân tích lại 1 ảnh
+      const n = await analyzeOne(activeImgId);
       if (!n) setError("Không đọc được món nào từ ảnh này. Thử ảnh rõ hơn, hoặc crop sát khu vực cần bóc rồi phân tích lại.");
       else setStatus("Đã phân tích ảnh #" + (imgIndex(activeImgId) + 1) + " · gộp trùng xuyên ảnh & gán mã lại toàn bộ.");
     } catch (e) { setError("Không phân tích được ảnh #" + (imgIndex(activeImgId) + 1) + ": " + ((e && e.message) || "lỗi không xác định")); }
@@ -2875,12 +2753,6 @@ function InventoryExtractor() {
                 <button className="btn btn-ghost" onClick={analyzeActive} disabled={loading || !activeImage}><MapPin size={15} /> Phân tích ảnh này</button>
                 <button className="btn btn-primary" onClick={analyzeAll} disabled={loading || !hasImages}>{loading && <Loader2 size={15} className="spin" />}{loading ? "Đang phân tích…" : "Phân tích tất cả (" + images.length + ")"}</button>
               </div>
-              {apiStats.calls > 0 && (
-                <div className="api-meter" title="Số lần gọi API · token đã dùng · chi phí ƯỚC TÍNH (giá có thể đổi)">
-                  <span className="am-dot" /> {apiStats.calls} calls · ~{Math.round((apiStats.inTok + apiStats.outTok) / 1000)}k tok · ~${apiStats.cost.toFixed(3)}
-                  <button className="am-reset" onClick={() => { resetApiStats(); }} title="Đặt lại bộ đếm">↺</button>
-                </div>
-              )}
             </div>
           </div>
 
