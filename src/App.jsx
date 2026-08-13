@@ -44,7 +44,7 @@ const ArrowLR = (p) => svg(p, P("m16 3 4 4-4 4"), P("M20 7H4"), P("m8 21-4-4 4-4
 
 /* ================= UNCHANGED LOGIC (verbatim) ================= */
 const NHOM_OPTS = ["Nội thất", "Đèn", "Vật liệu bề mặt", "Cửa & Vách kính", "Hardware", "Trang trí"];
-const TINCAY_OPTS = ["Cao", "Trung bình", "Thấp"];
+const TINCAY_OPTS = ["Cao", "Thấp"];
 
 const CODE_NAME = {
   AW: "TRANH & TRANG TRÍ", AC: "NHỰA TẤM (MICA)", BL: "MÀN SÁO", BR: "TẤM XUYÊN SÁNG",
@@ -98,7 +98,7 @@ Cột:
 - mon: tên ngắn gọn (tiếng Việt), KHÔNG kèm số lượng trong tên (đừng viết "2 ghế", "bộ 4 đèn", "3 chậu"…) — số lượng ghi ở cột so_luong. Cá thể giống hệt nhau gộp 1 dòng, tên nhất quán.
 - vat_lieu_finish, vi_tri: ngắn gọn.
 - so_luong: SỐ NGUYÊN ≥ 1 — ĐẾM số vật thể CÙNG LOẠI (giống nhau) nhìn thấy trong ảnh cho dòng này (vd 4 ghế ăn giống nhau → 4). Nếu chỉ có 1 thì ghi 1.
-- do_tin_cay: Cao / Trung bình / Thấp.
+- do_tin_cay: Cao / Thấp (chỉ 2 mức; không chắc chắn -> Thấp).
 - ghi_chu: cảnh báo ngắn hoặc để trống.
 - boxes: CHỈ ĐÚNG 1 box "x1,y1,x2,y2" (0..1; (x1,y1) trên-trái, (x2,y2) dưới-phải, ôm SÁT vật). QUAN TRỌNG: dù so_luong > 1, mỗi dòng CHỈ đặt 1 box duy nhất — đặt lên đúng cá thể NHÌN RÕ NHẤT (ít bị che, đủ sáng, ở tiền cảnh) trong tất cả cá thể cùng loại. KHÔNG đặt nhiều box cho các cá thể lặp lại.
 
@@ -136,7 +136,7 @@ TRANG TRÍ: chỉ bóc TRANH/ẢNH/đồ nghệ thuật (mã AW) và CÂY CẢNH
 
 Ví dụ dòng:
 PT|Vật liệu bề mặt|Sơn đen mờ|Tường|Vách tivi|Cao||0.05,0.10,0.40,0.85
-MT|Vật liệu bề mặt|Nẹp đồng|Nẹp dọc trang trí|Vách tivi|Trung bình|Theo m dài|0.44,0.20,0.46,0.70
+MT|Vật liệu bề mặt|Nẹp đồng|Nẹp dọc trang trí|Vách tivi|Cao|Theo m dài|0.44,0.20,0.46,0.70
 LT|Đèn|Đèn tường|Gắn tường, ánh sáng ấm|Tường trái|Cao||0.18,0.42,0.21,0.52; 0.61,0.42,0.64,0.52
 F|Nội thất|Sofa băng|Bọc vải, khung gỗ|Phòng khách|Cao||0.30,0.55,0.72,0.86
 J|Nội thất|Tủ tivi liền tường|Gỗ phủ laminate|Vách tivi|Cao||0.05,0.62,0.45,0.86`;
@@ -179,7 +179,7 @@ ma|nhom|mon|vat_lieu_finish|so_luong|vi_tri|do_tin_cay|ghi_chu|boxes
 - vat_lieu_finish: mô tả vật liệu/màu/vân ngắn gọn.
 - so_luong: 1.
 - vi_tri: khu vực (vd "Sàn phòng ngủ", "Tường đầu giường", "Cửa sổ").
-- do_tin_cay: Cao / Trung bình / Thấp.
+- do_tin_cay: Cao / Thấp (chỉ 2 mức; không chắc chắn -> Thấp).
 - ghi_chu: ngắn gọn hoặc để trống.
 - boxes: 1 box "x1,y1,x2,y2" (0..1; (x1,y1) trên-trái, (x2,y2) dưới-phải) của 1 vùng ĐẠI DIỆN cho mảng bề mặt đó.`;
 
@@ -203,14 +203,11 @@ function mergeKey(pfx, mon, vat_lieu) {
 // Tách chuỗi vị trí thành các phần rời (loại trùng) khi gộp dòng.
 const splitLocs = (s) => String(s || "").split(/[,;]/).map((x) => x.trim()).filter(Boolean);
 
-// Ép độ tin cậy về ĐÚNG 3 trạng thái. Mọi giá trị lạ (do lệch cột / model trả bậy) -> "Trung bình".
+// Ép độ tin cậy về ĐÚNG 2 trạng thái: Cao / Thấp. "Trung bình" cũ và mọi giá trị lạ -> "Thấp" (để user review).
 function normTinCay(v) {
   const s = stripVN(v || "").trim();
-  if (!s) return "Trung bình";
   if (s.includes("cao")) return "Cao";
-  if (s.includes("thap")) return "Thấp";
-  if (s.includes("trung")) return "Trung bình";
-  return "Trung bình";
+  return "Thấp";
 }
 
 // --- Loại trừ vật thể KHÔNG bóc tách: người, màn hình/máy tính, laptop, sách ---
@@ -393,7 +390,7 @@ function codeItems(items, getPrefix) {
 // - Dòng chưa có mã hợp lệ thì KHÔNG gộp (giữ riêng), vì không đủ căn cứ để coi là trùng.
 function mergeRows(items, getPrefix) {
   const map = new Map(), out = [], srcMap = new Map();
-  const rank = { "Cao": 3, "Trung bình": 2, "Thấp": 1 };
+  const rank = { "Cao": 2, "Thấp": 1 };
   for (const it of items) {
     const pfx = String(getPrefix(it) || "").toUpperCase().replace(/[^A-Z]/g, "");
     if (!pfx || !VALID_PREFIX.has(pfx)) { out.push(it); continue; }
@@ -428,7 +425,7 @@ function mergeRows(items, getPrefix) {
 // đúng các item vừa bóc từ 1 ảnh (nên toàn bộ đều same-image).
 function mergeSameImage(items) {
   const map = new Map(), out = [];
-  const rank = { "Cao": 3, "Trung bình": 2, "Thấp": 1 };
+  const rank = { "Cao": 2, "Thấp": 1 };
   for (const it of items) {
     const pfx = String(it.prefix || "").toUpperCase().replace(/[^A-Z]/g, "");
     if (!pfx || !VALID_PREFIX.has(pfx)) { out.push(it); continue; }
@@ -621,7 +618,7 @@ function renderMarkers(){var wrap=document.getElementById("imgwrap");var img=doc
 function applyStates(){var wrap=document.getElementById("imgwrap");if(wrap)Array.prototype.slice.call(wrap.querySelectorAll(".marker")).forEach(function(n){var id=n.getAttribute("data-id");n.classList.toggle("active",st.sel!=null&&id===st.sel);n.classList.toggle("dim",st.sel!=null&&id!==st.sel);n.classList.toggle("hl",id===st.hov);});Array.prototype.slice.call(document.querySelectorAll("#invbody .grp-row")).forEach(function(n){var id=n.getAttribute("data-id");n.classList.toggle("active-row",id===st.sel);n.classList.toggle("hl-row",id===st.hov);});}
 function mtf(it){if(st.gf!=="__all"&&it._nhom!==st.gf)return false;if(!st.q)return true;var s=(it.no+" "+it.ma+" "+it.mon+" "+it.vat_lieu+" "+it.vi_tri).toLowerCase();return s.indexOf(st.q)>=0;}
 function renderTabs(){var el=document.getElementById("invtabs");if(!el)return;var seen={},order=[];D.groups.forEach(function(g){if(!seen[g.nhom]){seen[g.nhom]=1;order.push({n:g.nhom,c:g.items.length});}});var h='<button class="sheet-tab'+(st.gf==="__all"?" on":"")+'" data-gf="__all">Tất cả <span class="tab-n">'+items.length+'</span></button>';order.forEach(function(o){h+='<button class="sheet-tab'+(st.gf===o.n?" on":"")+'" data-gf="'+esc(o.n)+'">'+esc(o.n)+' <span class="tab-n">'+o.c+'</span></button>';});el.innerHTML=h;}
-function rowHtml(it){var thumb=it.crop?'<img class="grp-thumb" src="'+it.crop+'">':'<span class="grp-thumb-ph"></span>';return '<div class="grp-row'+(it.tin==="Thấp"?" row-low":"")+'" data-id="'+it.id+'" id="invrow-'+it.id+'" style="border-left-color:'+col(it._nhom)+'"><input type="checkbox" class="axchk" disabled><span class="grp-stt">'+it.no+'</span>'+thumb+'<input class="grp-input grp-code" value="'+esc(it.ma)+'" disabled><div class="grp-main"><input class="grp-input grp-mon" value="'+esc(it.mon)+'" disabled><input class="grp-input grp-vl" value="'+esc(it.vat_lieu)+'" disabled></div><div class="grp-qty"><button class="qty-btn" disabled>\u2212</button><input class="grp-input grp-sl'+(String(it.sl)==="0"?" qty-zero":"")+'" value="'+esc(it.sl)+'" disabled><button class="qty-btn" disabled>+</button></div><select class="grp-select" disabled><option>'+esc(it.tin||"Trung bình")+'</option></select><div class="row-act"></div></div>';}
+function rowHtml(it){var thumb=it.crop?'<img class="grp-thumb" src="'+it.crop+'">':'<span class="grp-thumb-ph"></span>';return '<div class="grp-row'+(it.tin==="Thấp"?" row-low":"")+'" data-id="'+it.id+'" id="invrow-'+it.id+'" style="border-left-color:'+col(it._nhom)+'"><input type="checkbox" class="axchk" disabled><span class="grp-stt">'+it.no+'</span>'+thumb+'<input class="grp-input grp-code" value="'+esc(it.ma)+'" disabled><div class="grp-main"><input class="grp-input grp-mon" value="'+esc(it.mon)+'" disabled><input class="grp-input grp-vl" value="'+esc(it.vat_lieu)+'" disabled></div><div class="grp-qty"><button class="qty-btn" disabled>\u2212</button><input class="grp-input grp-sl'+(String(it.sl)==="0"?" qty-zero":"")+'" value="'+esc(it.sl)+'" disabled><button class="qty-btn" disabled>+</button></div><select class="grp-select" disabled><option>'+esc(it.tin||"Thấp")+'</option></select><div class="row-act"></div></div>';}
 function renderRows(){var el=document.getElementById("invbody");if(!el)return;var h="";D.groups.forEach(function(g){var vis=g.items.filter(mtf);if(!vis.length)return;h+='<div><div class="grp-head" style="color:'+col(g.nhom)+'"><span class="grp-dot" style="background:'+col(g.nhom)+'"></span>'+esc(g.nhom)+' \u00b7 '+vis.length+'</div>';vis.forEach(function(it){h+=rowHtml(it);});h+='</div>';});el.innerHTML=h||'<div class="empty"><div class="msg">Không có dòng khớp bộ lọc.</div></div>';applyStates();}
 function pickRow(id){var it=byId[id];if(!it)return;st.sel=id;var here=it.marks.some(function(m){return m.img===st.cur;});if(!here&&it.marks.length){st.cur=it.marks[0].img;renderStrip();renderImage();}else{applyStates();}var el=document.getElementById("invrow-"+id);if(el&&el.scrollIntoView)el.scrollIntoView({block:"center",behavior:"smooth"});renderCrop(it);}
 function bindSearch(){var s=document.getElementById("invsearch");if(s)s.addEventListener("input",function(e){st.q=(e.target.value||"").toLowerCase().trim();renderRows();});}
@@ -645,7 +642,7 @@ function initEvents(){
  var rt=null;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(renderMarkers,120);});
 }
 var PAGED_CSS='@page{size:A4 landscape;margin:14mm 12mm 15mm;@top-left{content:string(rhtitle);font-size:9px;color:#666}@top-right{content:string(rhmeta);font-size:9px;color:#666}@bottom-center{content:"Trang " counter(page) " / " counter(pages);font-size:9px;color:#666}}.rh-title{string-set:rhtitle content(text)}.rh-meta{string-set:rhmeta content(text)}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#000;background:#fff}.ppage{break-after:page}.ppage:last-child{break-after:auto}.ptitle{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #222;padding-bottom:6px;margin-bottom:10px}.ptitle .pt-l{display:flex;align-items:center;gap:12px}.ptitle .plogo{height:34px;width:auto;display:block}.ptitle .pt-l b{font-size:15px}.ptitle .pt-l span{display:block;font-size:10px;color:#444;margin-top:2px}.ptitle .pt-r{font-size:11px;font-weight:700;color:#333}.prow{display:flex;gap:6mm;align-items:flex-start}.pcol-img{flex:0 0 54%;max-width:54%;min-width:0}.pcol-tbl{flex:1 1 auto;min-width:0}.pimg{text-align:center;margin:0}.pimg-inner{position:relative;display:inline-block;max-width:100%}.pimg-inner img{display:block;max-width:100%;max-height:170mm;height:auto;border:1px solid #ccc}.pmk{position:absolute;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:#fff;border:1.6px solid #c00;color:#c00;font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;line-height:1}table.pleg{width:100%;border-collapse:collapse;font-size:10px}table.pleg th,table.pleg td{border:1px solid #999;padding:2px 5px;text-align:left;vertical-align:top}table.pleg thead th{background:#eee}table.pleg thead{display:table-header-group}table.pleg td.c,table.pleg th.c{text-align:center}table.pleg tr.lg td{background:#eef0f2;font-weight:700;text-transform:uppercase;font-size:9px}table.pleg tr{break-inside:avoid}';
-function printFlowHtml(){var m=D.meta||{};function head(sub){var meta=[m.client?("CĐT: "+m.client):"",m.location||"",m.author?("Người bóc: "+m.author):"",m.date||""].filter(function(x){return x;}).map(esc).join("   \u00b7   ");return '<div class="ptitle"><div class="pt-l">'+(m.logo?'<img class="plogo" src="'+m.logo+'">':'')+'<div class="pt-txt"><b class="rh-title">'+esc(m.project||"Bảng bóc tách vật liệu")+'</b><span class="rh-meta">'+meta+'</span></div></div><div class="pt-r">'+esc(sub)+'</div></div>';}
+function printFlowHtml(){var m=D.meta||{};function head(sub){var meta=[m.location||"",m.client?("CĐT: "+m.client):"",m.date||""].filter(function(x){return x;}).map(esc).join("   \u00b7   ");var ttl=(m.code?esc(m.code)+" \u00b7 ":"")+esc(m.project||"Bảng bóc tách vật liệu");return '<div class="ptitle"><div class="pt-l">'+(m.logo?'<img class="plogo" src="'+m.logo+'">':'')+'<div class="pt-txt"><b class="rh-title">'+ttl+'</b><span class="rh-meta">'+meta+'</span></div></div><div class="pt-r">'+esc(sub)+'</div></div>';}
 function legRows(pred){var h="";D.groups.forEach(function(g){var gi=g.items.filter(pred);if(!gi.length)return;h+='<tr class="lg"><td colspan="4">'+esc(g.nhom)+'</td></tr>';gi.forEach(function(it){h+='<tr><td class="c">'+it.no+'</td><td>'+esc(it.ma)+'</td><td>'+esc(it.mon)+'</td><td>'+esc(it.vat_lieu)+'</td></tr>';});});return h;}
 var THEAD='<thead><tr><th class="c">#</th><th>Mã</th><th>Món</th><th>Vật liệu</th></tr></thead>';
 var html="",total=imgs.length;
@@ -655,7 +652,7 @@ function fillPrintRoot(){var r=document.getElementById("printroot");if(r)r.inner
 function nativePrint(){document.body.classList.remove("paged-on");fillPrintRoot();setTimeout(function(){window.print();},30);}
 function runPaged(){var target=document.getElementById("pagedpreview");if(!target){nativePrint();return;}try{target.innerHTML="";document.body.classList.add("paged-on");var prev=new window.Paged.Previewer();prev.preview(printFlowHtml(),[{"artius-paged.css":PAGED_CSS}],target).then(function(){setTimeout(function(){window.print();},120);}).catch(function(){document.body.classList.remove("paged-on");nativePrint();});}catch(e){document.body.classList.remove("paged-on");nativePrint();}}
 function doPrint(){if(window.__HAS_PAGED__&&window.Paged&&window.Paged.Previewer){runPaged();}else{nativePrint();}}
-function init(){var m=D.meta||{};var t=document.getElementById("expttl");if(t)t.textContent=m.project||"Bảng bóc tách vật liệu";var mm=document.getElementById("expmeta");if(mm)mm.textContent=[m.client?("CĐT: "+m.client):"",m.location||"",m.author?("Người bóc: "+m.author):"",m.date||""].filter(function(x){return x;}).join("   \u00b7   ");renderStrip();renderImage();renderTabs();renderRows();fillPrintRoot();initEvents();}
+function init(){var m=D.meta||{};var t=document.getElementById("expttl");if(t)t.textContent=(m.code?m.code+" \u00b7 ":"")+(m.project||"Bảng bóc tách vật liệu");var mm=document.getElementById("expmeta");if(mm)mm.textContent=[m.location||"",m.client?("CĐT: "+m.client):"",m.date||""].filter(function(x){return x;}).join("   \u00b7   ");renderStrip();renderImage();renderTabs();renderRows();fillPrintRoot();initEvents();}
 init();`;
 function buildInteractiveHtml(payload, appCss, pagedB64) {
   const DATA = JSON.stringify(payload).replace(/</g, "\\u003c");
@@ -1233,6 +1230,8 @@ const cssExtra = `
 .tb-toggle { margin-left:auto; }
 .tb-fields { display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; padding:16px 22px 16px; border-top:1px solid rgba(255,255,255,0.05); }
 .tb-field { flex:1 1 170px; min-width:150px; }
+.tb-field.tb-code { flex:0 1 130px; min-width:110px; }   /* Mã dự án: hẹp */
+.tb-field.tb-date { flex:0 1 130px; min-width:112px; max-width:150px; }  /* Ngày lập: thu nhỏ vừa nội dung */
 .tb-field label { font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); margin-bottom:4px; display:block; }
 .tb-field input { width:100%; background:var(--input); border:1px solid rgba(255,255,255,0.09); border-radius:9px; padding:8px 11px; color:var(--tx2); font-family:var(--sans); font-size:12.5px; outline:none; transition:border-color .15s; }
 .tb-field input:focus { border-color:rgba(123,163,207,0.55); }
@@ -1415,7 +1414,7 @@ function InventoryExtractor() {
   const [projectName, setProjectName] = useState("");
   const [client, setClient] = useState("");
   const [location, setLocation] = useState("");
-  const [author, setAuthor] = useState("");
+  const [projectCode, setProjectCode] = useState("");
   const [dateStr, setDateStr] = useState(new Date().toLocaleDateString("vi-VN"));
 
   const fileRef = useRef(null);
@@ -1801,7 +1800,7 @@ function InventoryExtractor() {
     const clusters = candidateClusters(cur);              // các cụm nghi giống (cùng prefix, token gần)
     if (!clusters.length) return 0;
 
-    const rank = { "Cao": 3, "Trung bình": 2, "Thấp": 1 };
+    const rank = { "Cao": 2, "Thấp": 1 };
     // Union-find trên TOÀN bảng để gộp các dòng được Sonnet xác nhận cùng nhau.
     const parent = cur.map((_, i) => i);
     const find = (x) => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
@@ -1937,7 +1936,7 @@ function InventoryExtractor() {
   // Thêm dòng mới NGAY DƯỚI dòng đang chọn (cùng nhóm với dòng đó); nếu chưa chọn thì thêm cuối.
   function addRow() {
     const sel = rows.find((r) => r.id === activeId);
-    const r = { id: nextId(), prefix: "", ma: "", nhom: sel ? sel.nhom : "Nội thất", mon: "", vat_lieu: "", soLuong: 1, vi_tri: "", do_tin_cay: "Trung bình", ghi_chu: "", instances: [], thumb: null };
+    const r = { id: nextId(), prefix: "", ma: "", nhom: sel ? sel.nhom : "Nội thất", mon: "", vat_lieu: "", soLuong: 1, vi_tri: "", do_tin_cay: "Thấp", ghi_chu: "", instances: [], thumb: null };
     setRows((rs) => {
       const idx = sel ? rs.findIndex((x) => x.id === sel.id) : -1;
       const next = idx >= 0 ? [...rs.slice(0, idx + 1), r, ...rs.slice(idx + 1)] : [...rs, r];
@@ -2008,7 +2007,7 @@ function InventoryExtractor() {
     const chosen = rows.filter((r) => selected.has(r.id));
     if (chosen.length < 2) return;
     pushUndo("gộp dòng");
-    const rank = { "Cao": 3, "Trung bình": 2, "Thấp": 1 };
+    const rank = { "Cao": 2, "Thấp": 1 };
     const base = { ...chosen[0], instances: [...chosen[0].instances] };
     const sset = srcIdsOf(chosen[0]);
     const locs = new Set(splitLocs(base.vi_tri));
@@ -2143,10 +2142,10 @@ function InventoryExtractor() {
   function buildCategorySheet(cat, list) {
     const aoa = [], merges = [];
     aoa.push(["CHỈ DẪN KỸ THUẬT VẬT LIỆU / MATERIAL SPECIFICATION"]);
-    aoa.push(["Dự án / Project:", projectName]);
-    aoa.push(["Chủ đầu tư / Client:", client]);
+    aoa.push(["Dự án / Project:", (projectCode ? projectCode + " — " : "") + projectName]);
     aoa.push(["Địa điểm / Location:", location]);
-    aoa.push(["Ngày / Date:", dateStr, "", "Người bóc / By:", author]);
+    aoa.push(["Chủ đầu tư / Client:", client]);
+    aoa.push(["Ngày / Date:", dateStr]);
     aoa.push([]);
     const headR = aoa.length;
     aoa.push(["STT / NO.", "KÝ HIỆU / SYMBOL", "THÔNG TIN / INFORMATION", "", "HÌNH ẢNH MẪU 3D / 3D", "HÌNH ẢNH DUYỆT / APPROVED", "LINK"]);
@@ -2252,7 +2251,7 @@ function InventoryExtractor() {
     ws.getRow(1).height = 46;
 
     const infos = [
-      "Dự án - mã dự án / Project - project code: " + (projectName || ""),
+      "Dự án - mã dự án / Project - project code: " + (projectCode ? projectCode + " — " : "") + (projectName || ""),
       "Địa điểm / Location: " + (location || ""),
       "Chủ đầu tư / Customer: " + (client || ""),
       "Hạng mục vật tư - thiết bị / Materials - equipment category: " + cat,
@@ -2487,7 +2486,7 @@ function InventoryExtractor() {
       const img = b0 && elReady(b0.imgId) ? makeExportCrop(getEl(b0.imgId), b0) : null;
       return { stt: i + 1, ma: r.ma, nhom: r.nhom, mon: r.mon, vat_lieu: r.vat_lieu, vi_tri: r.vi_tri, sl: qtyOf(r), do_tin_cay: r.do_tin_cay, ghi_chu: r.ghi_chu, image: img };
     });
-    const bundle = { meta: { project: projectName, client, location, author, date: dateStr, images: images.length, generatedAt: new Date().toISOString() }, items };
+    const bundle = { meta: { project: projectName, code: projectCode, client, location, date: dateStr, images: images.length, generatedAt: new Date().toISOString() }, items };
     try {
       const blob = new Blob([JSON.stringify(bundle)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -2527,7 +2526,7 @@ function InventoryExtractor() {
       }
       return { id: String(im.id), idx: i + 1, name: im.fileName || ("Ảnh " + (i + 1)), src };
     });
-    const payload = { meta: { project: projectName, client, location, author, date: dateStr, logo: ARTIUS_LOGO_PNG, generatedAt: new Date().toISOString() }, colors: GROUP_COLOR, images: imgList, groups };
+    const payload = { meta: { project: projectName, code: projectCode, client, location, date: dateStr, logo: ARTIUS_LOGO_PNG, generatedAt: new Date().toISOString() }, colors: GROUP_COLOR, images: imgList, groups };
     // B2: tải Paged.js (polyfill CSS Paged Media) rồi NHÚNG vào file -> PDF phân trang chuẩn, chạy offline.
     setStatus("Đang chuẩn bị HTML + Paged.js cho bản in…");
     let pagedB64 = "";
@@ -2613,11 +2612,11 @@ function InventoryExtractor() {
         </div>
         {infoOpen && (
           <div className="tb-fields">
+            <div className="tb-field tb-code"><label>Mã dự án</label><input placeholder="Mã DA…" value={projectCode} onChange={(e) => setProjectCode(e.target.value)} /></div>
             <div className="tb-field"><label>Dự án</label><input placeholder="Tên dự án…" value={projectName} onChange={(e) => setProjectName(e.target.value)} /></div>
-            <div className="tb-field"><label>Chủ đầu tư</label><input placeholder="CĐT…" value={client} onChange={(e) => setClient(e.target.value)} /></div>
             <div className="tb-field"><label>Địa điểm</label><input placeholder="Địa điểm…" value={location} onChange={(e) => setLocation(e.target.value)} /></div>
-            <div className="tb-field"><label>Người bóc</label><input placeholder="Tên bạn…" value={author} onChange={(e) => setAuthor(e.target.value)} /></div>
-            <div className="tb-field"><label>Ngày lập</label><input placeholder="dd/mm/yyyy…" value={dateStr} onChange={(e) => setDateStr(e.target.value)} /></div>
+            <div className="tb-field"><label>Chủ đầu tư</label><input placeholder="CĐT…" value={client} onChange={(e) => setClient(e.target.value)} /></div>
+            <div className="tb-field tb-date"><label>Ngày lập</label><input placeholder="dd/mm/yyyy…" value={dateStr} onChange={(e) => setDateStr(e.target.value)} /></div>
           </div>
         )}
       </header>
@@ -2875,7 +2874,7 @@ function InventoryExtractor() {
                             onChange={(e) => updateRow(r.id, "soLuong", e.target.value)} />
                           <button className="qty-btn" aria-label="Tăng số lượng" title="Tăng" onClick={(e) => { e.stopPropagation(); bumpQty(r, 1); }}>+</button>
                         </div>
-                        <select className="grp-select" aria-label="Độ tin cậy" value={TINCAY_OPTS.includes(r.do_tin_cay) ? r.do_tin_cay : "Trung bình"} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "do_tin_cay", e.target.value)}>
+                        <select className="grp-select" aria-label="Độ tin cậy" value={TINCAY_OPTS.includes(r.do_tin_cay) ? r.do_tin_cay : "Thấp"} onClick={(e) => e.stopPropagation()} onChange={(e) => updateRow(r.id, "do_tin_cay", e.target.value)}>
                           {TINCAY_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
                         </select>
                         <div className="row-act">
